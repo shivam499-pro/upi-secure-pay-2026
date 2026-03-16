@@ -1,12 +1,15 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional
 import asyncio
 import json
 import random
 from datetime import datetime
 from schemas import TransactionInput, TransactionResult, DashboardStats
 from risk_engine import RiskEngine
+from fraud_report import FraudReport, fraud_report_manager
+from network_graph import fraud_network
+from user_profile import UserProfile, user_profile_manager
 
 app = FastAPI(title="UPI Secure Pay API", version="1.0.0")
 
@@ -101,9 +104,47 @@ async def analyze_transaction(transaction: TransactionInput):
     """
     Analyze a transaction for fraud risk.
     Returns risk score, level, and blocking decision.
+    Includes behavioral deviation and network risk scoring.
     """
     try:
-        result = risk_engine.analyze_transaction(transaction)
+        # Get user ID (using a default if not provided)
+        user_id = "user@upi"  # In production, get from auth
+        
+        # Calculate behavioral deviation
+        behavioral_deviation = user_profile_manager.get_behavioral_deviation(
+            user_id=user_id,
+            amount=transaction.amount,
+            merchant_upi=transaction.merchant_upi_id,
+            hour_of_day=transaction.hour_of_day
+        )
+        
+        # Get network risk score
+        network_risk_score = fraud_network.get_network_risk_score(transaction.merchant_upi_id)
+        
+        # Analyze with enhanced scoring
+        result = risk_engine.analyze_transaction_enhanced(
+            transaction=transaction,
+            behavioral_deviation_score=behavioral_deviation.deviation_score,
+            network_risk_score=network_risk_score
+        )
+        
+        # Update user profile with this transaction
+        user_profile_manager.update_user_profile(
+            user_id=user_id,
+            amount=transaction.amount,
+            merchant_upi=transaction.merchant_upi_id,
+            hour_of_day=transaction.hour_of_day,
+            risk_score=result.risk_score
+        )
+        
+        # Add transaction to network graph
+        fraud_network.add_transaction_to_graph(
+            sender_upi=user_id,
+            receiver_upi=transaction.merchant_upi_id,
+            amount=transaction.amount,
+            timestamp=result.timestamp,
+            transaction_id=result.transaction_id
+        )
         
         # Store transaction
         transactions_store.insert(0, result)
@@ -235,6 +276,103 @@ async def startup_event():
             sample.is_on_call = True
         result = risk_engine.analyze_transaction(sample)
         transactions_store.append(result)
+
+
+# ========== NEW ENDPOINTS ==========
+
+# UPGRADE 1: Fraud Report Endpoint
+@app.post("/report-fraud")
+async def report_fraud(report: FraudReport):
+    """
+    Report a fraudulent transaction.
+    Adds fraud UPI to blacklist and returns case reference.
+    """
+    result = fraud_report_manager.process_fraud_report(report)
+    return {
+        "success": True,
+        "case_reference": result.case_reference,
+        "message": f"Fraud report registered. UPI {report.fraud_upi_id} added to blacklist.",
+        "timestamp": result.timestamp
+    }
+
+
+# UPGRADE 2: Fraud Network Graph Endpoint
+@app.get("/fraud-network")
+async def get_fraud_network():
+    """
+    Get fraud network graph data for visualization.
+    Returns nodes and edges with suspicious nodes marked.
+    """
+    return fraud_network.get_fraud_network_data()
+
+
+# UPGRADE 3: User Profile Endpoint
+@app.get("/user-profile/{user_id}")
+async def get_user_profile(user_id: str):
+    """
+    Get user behavioral profile.
+    Shows user's normal transaction patterns.
+    """
+    profile = user_profile_manager.get_profile(user_id)
+    if not profile:
+        return {
+            "user_id": user_id,
+            "message": "New user - no profile yet",
+            "avg_amount": 1000.0,
+            "usual_hours": [10, 11, 12, 13, 14, 15, 16, 17, 18],
+            "transaction_count": 0
+        }
+    return profile
+
+
+# UPGRADE 3: Mule Accounts Endpoint
+@app.get("/mule-accounts")
+async def get_mule_accounts():
+    """
+    Get list of detected mule accounts.
+    Accounts receiving money from 3+ different senders.
+    """
+    return {
+        "mule_accounts": fraud_network.detect_mule_accounts(),
+        "count": len(fraud_network.detect_mule_accounts())
+    }
+
+
+# UPGRADE 1: Fraud Reports Endpoint
+@app.get("/fraud-reports")
+async def get_fraud_reports():
+    """
+    Get all fraud reports.
+    """
+    return {
+        "reports": fraud_report_manager.get_all_reports(),
+        "count": len(fraud_report_manager.get_all_reports())
+    }
+
+
+# UPGRADE 5: Health Check Endpoint
+@app.get("/health")
+async def health_check():
+    """
+    System health check.
+    """
+    return {
+        "status": "healthy",
+        "services": {
+            "api": "running",
+            "risk_engine": "running",
+            "fraud_network": "running",
+            "user_profiles": "running",
+            "fraud_reports": "running"
+        },
+        "stats": {
+            "total_transactions": len(transactions_store),
+            "mule_accounts": len(fraud_network.detect_mule_accounts()),
+            "fraud_reports": len(fraud_report_manager.get_all_reports()),
+            "user_profiles": len(user_profile_manager.get_all_profiles())
+        },
+        "timestamp": datetime.now().isoformat()
+    }
 
 
 if __name__ == "__main__":
