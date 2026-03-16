@@ -1,6 +1,7 @@
 from typing import List, Tuple, Optional
 from schemas import TransactionInput, RiskFactor, TransactionResult
 from rules import SafetyRuleEngine
+import lgbm_model
 import uuid
 from datetime import datetime
 import hashlib
@@ -41,8 +42,33 @@ class RiskEngine:
     def apply_ml_adjustment(self, base_score: float, transaction: TransactionInput) -> float:
         """
         Apply ML model-based adjustment to the risk score.
-        This simulates a LightGBM model prediction.
-        In production, this would load and use an actual trained model.
+        Uses real LightGBM model if available, otherwise falls back to simulated scoring.
+        """
+        # Try to get real ML prediction
+        ml_score = 0.0
+        
+        try:
+            if lgbm_model.is_model_loaded():
+                ml_score = lgbm_model.predict_fraud_score(transaction)
+                # Convert probability to score (0-100)
+                ml_score = ml_score * 100
+            else:
+                # Fallback to simulated scoring
+                ml_score = self._simulate_ml_score(transaction, base_score)
+        except Exception as e:
+            print(f"ML model error: {e}, using fallback")
+            ml_score = self._simulate_ml_score(transaction, base_score)
+        
+        # Combine base score with ML score
+        # Use weighted average: 60% ML, 40% rule-based
+        combined = (0.6 * ml_score) + (0.4 * base_score)
+        
+        return min(combined, self.MAX_RISK_SCORE)
+    
+    def _simulate_ml_score(self, transaction: TransactionInput, base_score: float = 0.0) -> float:
+        """
+        Fallback simulated ML scoring if model not available.
+        This simulates what a trained model would do.
         """
         # Simulated ML model features and adjustments
         # Feature: Amount relative to typical transaction
