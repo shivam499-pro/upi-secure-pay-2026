@@ -44,6 +44,10 @@ class TransactionResult(BaseModel):
     status: str  # approved, blocked, alerted
     sequence_risk_score: Optional[float] = None  # Level 2 LSTM score
     level2_active: Optional[bool] = False  # Is Level 2 LSTM active
+    level3_score: Optional[float] = None  # Level 3 GNN+NLP score
+    gnn_score: Optional[float] = None  # GNN component score
+    nlp_score: Optional[float] = None  # NLP component score
+    level3_active: Optional[bool] = False  # Is Level 3 active
 
 
 class DashboardStats(BaseModel):

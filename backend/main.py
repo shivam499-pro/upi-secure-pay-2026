@@ -11,6 +11,7 @@ from fraud_report import FraudReport, fraud_report_manager
 from network_graph import fraud_network
 from user_profile import UserProfile, user_profile_manager
 from level2_lstm import predict_sequence_risk
+from level3_gnn_nlp import predict_level3_risk, initialize_level3, add_transaction_to_graph
 import database
 
 app = FastAPI(title="UPI Secure Pay API", version="1.0.0")
@@ -151,10 +152,27 @@ async def analyze_transaction(transaction: TransactionInput):
         # Get network risk score
         network_risk_score = fraud_network.get_network_risk_score(transaction.merchant_upi_id)
         
-        # Analyze with enhanced scoring (includes LSTM)
+        # Level 3 GNN + NLP Analysis
+        level3_score = 0.0
+        gnn_score = 0.0
+        nlp_score = 0.0
+        level3_reasons = []
+        
+        try:
+            level3_score, level3_reasons, gnn_score, nlp_score, level3_name = predict_level3_risk(
+                merchant_name=transaction.merchant_name,
+                upi_id=transaction.merchant_upi_id,
+                account_id=transaction.merchant_upi_id,
+                transaction_graph_data=None
+            )
+        except Exception as e:
+            print(f"Level 3 error: {e}")
+        
+        # Analyze with enhanced scoring (includes LSTM and Level 3)
         result = risk_engine.analyze_transaction_enhanced(
             transaction=transaction,
             lstm_sequence_score=lstm_sequence_score,
+            level3_score=level3_score,
             behavioral_deviation_score=behavioral_deviation.deviation_score,
             network_risk_score=network_risk_score
         )
@@ -169,9 +187,23 @@ async def analyze_transaction(transaction: TransactionInput):
                 weight=25.0 * lstm_sequence_score
             ))
         
-        # Add Level 2 LSTM fields to result
+        # Add Level 3 GNN+NLP reasons if high
+        if level3_score > 0.5:
+            for reason in level3_reasons:
+                result.risk_factors.append(RiskFactor(
+                    name="Level 3 GNN+NLP",
+                    description=reason,
+                    severity="high",
+                    weight=20.0 * level3_score
+                ))
+        
+        # Add Level 2 and Level 3 fields to result
         result.sequence_risk_score = lstm_sequence_score
         result.level2_active = len(user_transactions) >= 3
+        result.level3_score = level3_score
+        result.gnn_score = gnn_score
+        result.nlp_score = nlp_score
+        result.level3_active = True
         
         # Update user profile with this transaction
         user_profile_manager.update_user_profile(
@@ -189,6 +221,14 @@ async def analyze_transaction(transaction: TransactionInput):
             amount=transaction.amount,
             timestamp=result.timestamp,
             transaction_id=result.transaction_id
+        )
+        
+        # Add transaction to Level 3 graph
+        add_transaction_to_graph(
+            sender=user_id,
+            receiver=transaction.merchant_upi_id,
+            amount=transaction.amount,
+            timestamp=result.timestamp
         )
         
         # Store transaction
@@ -438,6 +478,9 @@ async def startup_event():
     
     # Initialize database
     db_initialized, db_engine, db_session = database.init_db()
+    
+    # Initialize Level 3 GNN+NLP
+    initialize_level3()
     
     # Generate initial sample data
     for _ in range(10):
