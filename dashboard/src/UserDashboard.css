@@ -1,0 +1,540 @@
+.user-dashboard {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #111111;
+  min-height: 100vh;
+  color: #fff;
+}
+
+/* SECTION 1: Personal Header */
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+  padding: 30px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #333;
+}
+
+.user-title {
+  font-size: 2rem;
+  color: #f5a623;
+  margin: 0 0 8px 0;
+}
+
+.user-name {
+  color: #888;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.safety-score-card {
+  text-align: center;
+}
+
+.safety-score-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00cc66 0%, #00aa55 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 12px;
+  box-shadow: 0 0 30px rgba(0, 204, 102, 0.4);
+}
+
+.safety-score-number {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1;
+}
+
+.safety-score-label {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.safety-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.blinking-dot {
+  width: 10px;
+  height: 10px;
+  background: #00cc66;
+  border-radius: 50%;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.status-text {
+  color: #00cc66;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.status-message {
+  color: #666;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* SECTION 2: AI Behavior Profile */
+.profile-card {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #333;
+}
+
+.section-title {
+  color: #f5a623;
+  font-size: 1.3rem;
+  margin: 0 0 20px 0;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.profile-stat {
+  background: #252525;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  display: block;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.ai-note {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* SECTION 3: Pre-Payment Risk Checker */
+.risk-checker-card {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #333;
+}
+
+.checker-subtitle {
+  color: #888;
+  margin: -10px 0 20px 0;
+}
+
+.checker-form {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.checker-input {
+  flex: 1;
+  padding: 14px 18px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.checker-input:focus {
+  outline: none;
+  border-color: #f5a623;
+}
+
+.checker-button {
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #f5a623 0%, #d4941c 100%);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.checker-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(245, 166, 35, 0.4);
+}
+
+.checker-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Result Card */
+.result-card {
+  padding: 24px;
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.result-card.approved {
+  background: rgba(0, 204, 102, 0.15);
+  border: 2px solid #00cc66;
+}
+
+.result-card.alerted {
+  background: rgba(255, 170, 0, 0.15);
+  border: 2px solid #ffaa00;
+}
+
+.result-card.blocked {
+  background: rgba(255, 68, 68, 0.15);
+  border: 2px solid #ff4444;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.result-header.approved .result-title {
+  color: #00cc66;
+}
+
+.result-header.alerted .result-title {
+  color: #ffaa00;
+}
+
+.result-header.blocked .result-title {
+  color: #ff4444;
+}
+
+.result-icon {
+  font-size: 2rem;
+}
+
+.result-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.result-score {
+  font-size: 1.1rem;
+  color: #fff;
+  margin: 0 0 8px 0;
+}
+
+.result-message {
+  color: #aaa;
+  margin: 8px 0;
+}
+
+.result-message.danger-text {
+  color: #ff4444;
+  font-weight: bold;
+}
+
+.result-warning {
+  color: #ff4444;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+.result-reasons {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.result-reasons li {
+  padding: 8px 0;
+  color: #ffaa00;
+}
+
+.result-reasons.danger li {
+  color: #ff4444;
+}
+
+.proceed-button, .caution-button, .danger-button {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.proceed-button {
+  background: #00cc66;
+  color: #fff;
+}
+
+.caution-button {
+  background: #ffaa00;
+  color: #000;
+}
+
+.danger-button {
+  background: #ff4444;
+  color: #fff;
+}
+
+/* SECTION 4: Recent Transactions */
+.transactions-card {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #333;
+}
+
+.transactions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.transaction-card {
+  background: #252525;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #333;
+}
+
+.txn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.txn-merchant {
+  font-weight: bold;
+  color: #fff;
+}
+
+.txn-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.txn-upi {
+  color: #888;
+  font-size: 0.85rem;
+  margin: 4px 0;
+}
+
+.txn-amount {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #f5a623;
+  margin: 8px 0;
+}
+
+.txn-risk {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 0 0 8px 0;
+}
+
+.why-button {
+  background: none;
+  border: 1px solid #444;
+  color: #888;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.txn-reasons {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #333;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* SECTION 5: Safety Tips */
+.safety-tips-card {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #333;
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.tip-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.tip-card.danger {
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid #ff4444;
+}
+
+.tip-card.warning {
+  background: rgba(255, 170, 0, 0.15);
+  border: 1px solid #ffaa00;
+}
+
+.tip-card.orange {
+  background: rgba(255, 136, 0, 0.15);
+  border: 1px solid #ff8800;
+}
+
+.tip-card.success {
+  background: rgba(0, 204, 102, 0.15);
+  border: 1px solid #00cc66;
+}
+
+.tip-icon {
+  font-size: 1.5rem;
+}
+
+.tip-text {
+  color: #fff;
+  font-weight: 500;
+}
+
+/* SECTION 6: Report Fraud */
+.report-fraud-section {
+  text-align: center;
+  padding: 20px;
+}
+
+.report-fraud-button {
+  padding: 18px 40px;
+  background: linear-gradient(135deg, #ff4444 0%, #cc3333 100%);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.report-fraud-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 25px rgba(255, 68, 68, 0.5);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  padding: 30px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 450px;
+  border: 1px solid #333;
+}
+
+.modal-title {
+  color: #ff4444;
+  font-size: 1.5rem;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.modal-input, .modal-textarea {
+  width: 100%;
+  padding: 12px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.modal-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cancel-button, .submit-button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.cancel-button {
+  background: #333;
+  border: none;
+  color: #fff;
+}
+
+.submit-button {
+  background: #ff4444;
+  border: none;
+  color: #fff;
+  font-weight: bold;
+}

@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import UserDashboard from './UserDashboard';
 import './App.css';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
 function App() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState('admin');
+  
   // State
   const [stats, setStats] = useState({
     total_transactions: 0,
@@ -261,8 +265,27 @@ function App() {
 
   const allTransactions = [...liveTransactions, ...transactions].slice(0, 20);
 
+  // Show user dashboard if that tab is active
+  if (activeTab === 'user') {
+    return (
+      <div className="app">
+        <div className="tab-navigation">
+          <button className="tab-button" onClick={() => setActiveTab('admin')}>📊 Admin Dashboard</button>
+          <button className="tab-button active">🛡️ My Safety Dashboard</button>
+        </div>
+        <UserDashboard />
+      </div>
+    );
+  }
+
   return (
     <div className="app">
+      {/* Tab Navigation */}
+      <div className="tab-navigation">
+        <button className="tab-button active">📊 Admin Dashboard</button>
+        <button className="tab-button" onClick={() => setActiveTab('user')}>🛡️ My Safety Dashboard</button>
+      </div>
+      
       {/* Header */}
       <header className="header">
         <div className="header-left">

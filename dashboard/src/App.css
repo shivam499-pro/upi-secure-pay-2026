@@ -730,3 +730,34 @@ body {
   .header { flex-direction: column; gap: 1rem; text-align: center; }
   .toggle-row { flex-direction: column; }
 }
+  
+/* Tab Navigation */  
+.tab-navigation {  
+  display: flex;  
+  background: #1a1a1a;  
+  border-bottom: 2px solid #f5a623;  
+  padding: 0 20px;  
+}  
+ECHO is on.
+.tab-button {  
+  padding: 16px 24px;  
+  background: transparent;  
+  border: none;  
+  color: #f5a623;  
+  font-size: 1rem;  
+  font-weight: 600;  
+  cursor: pointer;  
+  transition: all 0.3s;  
+  border-bottom: 3px solid transparent;  
+  margin-bottom: -2px;  
+}  
+ECHO is on.
+.tab-button:hover {  
+  background: rgba(245, 166, 35, 0.1);  
+}  
+ECHO is on.
+.tab-button.active {  
+  background: #f5a623;  
+  color: #000;  
+  border-bottom-color: #f5a623;  
+} 

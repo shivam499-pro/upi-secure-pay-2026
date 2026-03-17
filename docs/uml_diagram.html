@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPI Secure Pay - UML Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: white;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #f5a623;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .section {
+            background: #111111;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .section h2 {
+            color: #f5a623;
+            font-size: 22px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f5a623;
+        }
+        
+        .diagram-container {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+        }
+        
+        .mermaid {
+            font-size: 14px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 1400px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>UPI Secure Pay - UML Diagrams</h1>
+    
+    <div class="section">
+        <h2>1. Class Diagram</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+classDiagram
+    class TransactionInput {
+        +str transaction_id
+        +float amount
+        +str merchant_name
+        +str merchant_upi_id
+        +bool is_new_merchant
+        +int hour_of_day
+        +bool is_new_device
+        +bool device_rooted
+        +bool is_on_call
+        +bool location_changed
+        +int velocity_last_1hr
+        +float user_avg_amount
+        +float swipe_confidence
+    }
+    
+    class RiskFactor {
+        +str name
+        +str description
+        +str severity
+        +float weight
+    }
+    
+    class TransactionResult {
+        +str transaction_id
+        +str sender_upi
+        +str receiver_upi
+        +float amount
+        +float risk_score
+        +str risk_level
+        +bool is_blocked
+        +bool is_alert
+        +str message
+        +List[RiskFactor] risk_factors
+        +str timestamp
+        +str status
+    }
+    
+    class DashboardStats {
+        +int total_transactions
+        +int blocked_transactions
+        +int alerted_transactions
+        +int approved_transactions
+        +float average_risk_score
+        +List[TransactionResult] recent_transactions
+    }
+    
+    class SafetyRuleEngine {
+        +List BLACKLIST
+        +Dict SCAM_KEYWORDS
+        +float HIGH_AMOUNT_THRESHOLD
+        +List[RiskFactor] check_blacklist(upi_id)
+        +List[RiskFactor] check_scam_keywords(description)
+        +List[RiskFactor] check_amount_threshold(amount)
+        +List[RiskFactor] check_device_rooted(device_rooted)
+        +List[RiskFactor] check_on_call(is_on_call)
+        +List[RiskFactor] analyze_transaction(transaction)
+    }
+    
+    class RiskEngine {
+        +float MAX_RISK_SCORE
+        +float BLOCK_THRESHOLD
+        +float ALERT_THRESHOLD
+        -SafetyRuleEngine rule_engine
+        +float calculate_base_risk_score(risk_factors)
+        +float apply_ml_adjustment(base_score, transaction)
+        +Dict calculate_combined_risk_score(safety, ml, behavioral, network)
+        +str determine_risk_level(risk_score)
+        +Tuple determine_action(risk_score)
+        +TransactionResult analyze_transaction(transaction)
+        +TransactionResult analyze_transaction_enhanced(transaction, behavioral, network)
+    }
+    
+    class FraudReport {
+        +str fraud_upi_id
+        +float amount
+        +str description
+        +str reported_by
+    }
+    
+    class UserProfile {
+        +str user_id
+        +float avg_amount
+        +List usual_hours
+        +int transaction_count
+        +Dict merchant_visits
+    }
+    
+    TransactionInput --> RiskFactor : produces
+    RiskEngine --> TransactionResult : produces
+    SafetyRuleEngine --> RiskFactor : produces
+    RiskEngine --> SafetyRuleEngine : uses
+            </div>
+        </div>
+    </div>
+    
+    <div class="grid-2">
+        <div class="section">
+            <h2>2. Use Case Diagram</h2>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart LR
+    subgraph Actors
+        U[User]
+        A[Admin]
+    end
+    
+    subgraph UseCases
+        UC1[Analyze Transaction]
+        UC2[View Dashboard]
+        UC3[Report Fraud]
+        UC4[View Fraud Network]
+        UC5[View User Profile]
+        UC6[Live Feed]
+    end
+    
+    U --> UC1
+    U --> UC2
+    U --> UC3
+    U --> UC6
+    A --> UC2
+    A --> UC3
+    A --> UC4
+    A --> UC5
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>3. Component Diagram</h2>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart TB
+    subgraph Client
+        D[React Dashboard]
+    end
+    
+    subgraph Backend
+        API[FastAPI Gateway]
+        RE[Risk Engine]
+        SE[Safety Rules]
+        ML[LightGBM]
+        BP[Behavioral Profile]
+        NG[Network Graph]
+    end
+    
+    subgraph Storage
+        PG[(PostgreSQL)]
+        R[(Redis)]
+    end
+    
+    D -->|HTTP/WebSocket| API
+    API --> RE
+    RE --> SE
+    RE --> ML
+    RE --> BP
+    RE --> NG
+    API --> PG
+    API --> R
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Sequence Diagram - Transaction Analysis</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+sequenceDiagram
+    participant Client as Client/App
+    participant API as FastAPI
+    participant Rules as Safety Engine
+    participant ML as LightGBM Model
+    participant Profile as User Profile
+    participant Network as Network Graph
+    participant DB as PostgreSQL
+    participant WS as WebSocket
+    
+    Client->>API: POST /analyze-transaction
+    API->>Rules: Analyze transaction rules
+    Rules-->>API: Risk factors
+    
+    API->>ML: Get ML fraud score
+    ML-->>API: ML risk score (0-100)
+    
+    API->>Profile: Get behavioral deviation
+    Profile-->>API: Behavioral deviation score
+    
+    API->>Network: Get network risk
+    Network-->>API: Network risk score
+    
+    API->>API: Calculate combined score
+    Note over API: Safety 40% + ML 30% + Behavioral 20% + Network 10%
+    
+    alt Risk Score >= 75
+        API-->>Client: BLOCKED
+    else Risk Score >= 50
+        API-->>Client: ALERT
+    else
+        API-->>Client: APPROVED
+    end
+    
+    API->>DB: Save transaction
+    API->>WS: Broadcast to live feed
+    WS-->>Client: Real-time update
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>5. Sequence Diagram - Fraud Reporting</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+sequenceDiagram
+    participant User as User
+    participant API as FastAPI
+    participant Fraud as Fraud Report Manager
+    participant Rules as Safety Engine
+    participant DB as Database
+    
+    User->>API: POST /report-fraud
+    API->>Fraud: Process fraud report
+    Fraud->>Rules: Add to blacklist
+    Rules-->>Fraud: Updated blacklist
+    
+    Fraud->>Fraud: Generate case reference
+    Fraud->>DB: Save fraud report
+    
+    API-->>User: Success + case reference
+            </div>
+        </div>
+    </div>
+    
+    <div class="grid-2">
+        <div class="section">
+            <h2>6. State Diagram - Transaction</h2>
+            <div class="diagram-container">
+                <div class="mermaid">
+stateDiagram-v2
+    [*] --> Received
+    Received --> Analyzing: Submit
+    Analyzing --> SafetyCheck: Run rules
+    SafetyCheck --> MLCheck: Get ML score
+    MLCheck --> Combined: Aggregate scores
+    Combined --> Decision: Calculate final
+    
+    Decision --> Approved: Score < 50
+    Decision --> Alerted: 50 <= Score < 75
+    Decision --> Blocked: Score >= 75
+    
+    Approved --> [*]
+    Alerted --> [*]
+    Blocked --> [*]
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>7. Data Flow Diagram</h2>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart TB
+    subgraph Data Stores
+        DB[(Transaction DB)]
+        R[(Redis Cache)]
+        BL[Blacklist]
+    end
+    
+    subgraph Processing
+        API[FastAPI]
+        RE[Risk Engine]
+        SE[Safety Rules]
+        ML[ML Model]
+    end
+    
+    subgraph Inputs
+        TX[Transaction]
+        FR[Fraud Report]
+    end
+    
+    subgraph Outputs
+        RES[Result]
+        NOT[Notification]
+    end
+    
+    TX --> API
+    FR --> API
+    API --> RE
+    RE --> SE
+    RE --> ML
+    SE --> BL
+    RE --> DB
+    RE --> R
+    RE --> RES
+    RES --> NOT
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>8. Deployment Diagram</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+flowchart LR
+    subgraph Cloud
+        I[Internet]
+    end
+    
+    subgraph Client
+        D[React Dashboard]
+    end
+    
+    subgraph API_Server
+        API[FastAPI]
+        RE[Risk Engine]
+        WS[WebSocket]
+    end
+    
+    subgraph ML_Server
+        LGBM[LightGBM]
+    end
+    
+    subgraph Database
+        PG[(PostgreSQL)]
+        R[(Redis)]
+    end
+    
+    D --> I
+    I --> API
+    API --> RE
+    API --> WS
+    API --> LGBM
+    API --> PG
+    API --> R
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#1a1a1a',
+                primaryColor: '#f5a623',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#f5a623',
+                lineColor: '#888',
+                secondaryColor: '#4CAF50',
+                tertiaryColor: '#111'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 20
+            },
+            sequence: {
+                actorMargin: 50,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35
+            }
+        });
+    </script>
+</body>
+</html>
