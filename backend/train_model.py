@@ -1,287 +1,167 @@
 """
-LightGBM Fraud Detection Model Trainer
-Trains a model on IEEE-CIS, PaySim, or synthetic data
+UPI SECURE PAY - LightGBM Fraud Detection Model Training
+Using PaySim Dataset (Synthetic Mobile Money Transactions)
 """
 
-import os
-import numpy as np
 import pandas as pd
+import numpy as np
+import pickle
+import os
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 import lightgbm as lgb
-from joblib import dump
 import warnings
 warnings.filterwarnings('ignore')
 
-# Data paths
-IEEE_PATH = "C:\\UPI_SECURE_PAY\\Data\\ieee_fraud.csv"
-PAYSIM_PATH = "C:\\UPI_SECURE_PAY\\Data\\paysim.csv"
+print("=" * 60)
+print("UPI SECURE PAY - LightGBM Fraud Detection Model Training")
+print("Using PaySim Dataset")
+print("=" * 60)
 
-# Feature columns we need
-FEATURE_COLUMNS = [
-    'amount',
-    'is_new_merchant',
-    'hour_of_day',
-    'is_new_device',
-    'device_rooted',
-    'is_on_call',
-    'location_changed',
-    'velocity_last_1hr',
-    'user_avg_amount',
-    'swipe_confidence',
-    'amount_ratio'
+# Load PaySim data
+print("\nLoading PaySim data...")
+data_path = r"C:\Users\sj998\OneDrive\Desktop\archive\PS_20174392719_1491204439457_log.csv"
+df = pd.read_csv(data_path)
+print(f"Total transactions: {len(df):,}")
+print(f"Fraud cases: {df['isFraud'].sum():,} ({df['isFraud'].mean()*100:.2f}%)")
+
+# Use a sample for faster training (500K transactions)
+sample_size = 500000
+if len(df) > sample_size:
+    df = df.sample(n=sample_size, random_state=42).reset_index(drop=True)
+    print(f"\nUsing sample of {sample_size:,} transactions")
+
+# Feature Engineering for PaySim
+print("\nEngineering features...")
+
+# Encode transaction type
+df['type_CASH_IN'] = (df['type'] == 'CASH_IN').astype(int)
+df['type_CASH_OUT'] = (df['type'] == 'CASH_OUT').astype(int)
+df['type_DEBIT'] = (df['type'] == 'DEBIT').astype(int)
+df['type_PAYMENT'] = (df['type'] == 'PAYMENT').astype(int)
+df['type_TRANSFER'] = (df['type'] == 'TRANSFER').astype(int)
+
+# Balance change features
+df['balance_change_orig'] = df['newbalanceOrig'] - df['oldbalanceOrg']
+df['balance_change_dest'] = df['newbalanceDest'] - df['oldbalanceDest']
+df['balance_error_orig'] = df['oldbalanceOrg'] - df['amount'] - df['newbalanceOrig']
+df['balance_error_dest'] = df['oldbalanceDest'] + df['amount'] - df['newbalanceDest']
+
+# Flagged fraud (system flag)
+df['is_flagged'] = df['isFlaggedFraud']
+
+# Amount features
+df['log_amount'] = np.log1p(df['amount'])
+
+# Transaction type numeric
+type_map = {'CASH_IN': 0, 'CASH_OUT': 1, 'DEBIT': 2, 'PAYMENT': 3, 'TRANSFER': 4}
+df['type_numeric'] = df['type'].map(type_map)
+
+# Select features
+feature_cols = [
+    'type_CASH_IN', 'type_CASH_OUT', 'type_DEBIT', 'type_PAYMENT', 'type_TRANSFER',
+    'amount', 'log_amount',
+    'oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest',
+    'balance_change_orig', 'balance_change_dest',
+    'balance_error_orig', 'balance_error_dest',
+    'is_flagged', 'type_numeric', 'step'
 ]
 
-def load_ieee_data():
-    """Load IEEE-CIS fraud data"""
-    print("Loading IEEE-CIS data...")
-    df = pd.read_csv(IEEE_PATH, nrows=10000)
-    
-    # Map IEEE columns to our features
-    data = pd.DataFrame()
-    data['amount'] = df['TransactionAmt'].fillna(0)
-    data['is_new_merchant'] = (df['card1'].astype(str).str.len() > 5).astype(int).head(len(df))
-    data['hour_of_day'] = np.random.randint(0, 24, len(df))
-    data['is_new_device'] = np.random.randint(0, 2, len(df))
-    data['device_rooted'] = np.random.randint(0, 2, len(df))
-    data['is_on_call'] = np.random.randint(0, 2, len(df))
-    data['location_changed'] = np.random.randint(0, 2, len(df))
-    data['velocity_last_1hr'] = np.random.randint(0, 11, len(df))
-    data['user_avg_amount'] = df['TransactionAmt'].fillna(1000).clip(100, 5000)
-    data['swipe_confidence'] = np.random.uniform(0.5, 1.0, len(df))
-    data['amount_ratio'] = data['amount'] / data['user_avg_amount']
-    data['label'] = df['isFraud'].fillna(0)
-    
-    print(f"IEEE-CIS: Loaded {len(data)} transactions")
-    return data
+X = df[feature_cols].copy()
+y = df['isFraud'].copy()
 
-def load_paysim_data():
-    """Load PaySim data"""
-    print("Loading PaySim data...")
-    df = pd.read_csv(PAYSIM_PATH, nrows=10000)
-    
-    # Map PaySim columns to our features
-    data = pd.DataFrame()
-    data['amount'] = df['amount'].fillna(0)
-    data['is_new_merchant'] = np.random.randint(0, 2, len(df))
-    data['hour_of_day'] = np.random.randint(0, 24, len(df))
-    data['is_new_device'] = np.random.randint(0, 2, len(df))
-    data['device_rooted'] = np.random.randint(0, 2, len(df))
-    data['is_on_call'] = np.random.randint(0, 2, len(df))
-    data['location_changed'] = np.random.randint(0, 2, len(df))
-    data['velocity_last_1hr'] = np.random.randint(0, 11, len(df))
-    data['user_avg_amount'] = df['amount'].fillna(1000).clip(100, 5000)
-    data['swipe_confidence'] = np.random.uniform(0.5, 1.0, len(df))
-    data['amount_ratio'] = data['amount'] / data['user_avg_amount']
-    data['label'] = df['isFraud'].fillna(0)
-    
-    print(f"PaySim: Loaded {len(data)} transactions")
-    return data
+# Handle any missing values
+X = X.fillna(0)
 
-def generate_synthetic_data(n_samples=50000):
-    """Generate synthetic transaction data for training"""
-    print(f"Generating {n_samples} synthetic transactions...")
-    
-    np.random.seed(42)
-    
-    # Generate features
-    data = pd.DataFrame()
-    
-    # Amount - lognormal distribution (typical for transactions)
-    data['amount'] = np.random.lognormal(mean=5, sigma=1.5, size=n_samples).clip(10, 500000)
-    
-    # Transaction characteristics
-    data['is_new_merchant'] = np.random.randint(0, 2, n_samples)
-    data['hour_of_day'] = np.random.randint(0, 24, n_samples)
-    data['is_new_device'] = np.random.randint(0, 2, n_samples)
-    data['device_rooted'] = np.random.choice([0, 0, 0, 1], n_samples)  # ~25% rooted
-    data['is_on_call'] = np.random.choice([0, 0, 0, 1], n_samples)  # ~25% on call
-    data['location_changed'] = np.random.randint(0, 2, n_samples)
-    data['velocity_last_1hr'] = np.random.randint(0, 11, n_samples)
-    
-    # User behavior
-    data['user_avg_amount'] = np.random.uniform(100, 5000, n_samples)
-    data['swipe_confidence'] = np.random.uniform(0.5, 1.0, n_samples)
-    data['amount_ratio'] = data['amount'] / data['user_avg_amount']
-    
-    # Generate fraud labels based on risk factors
-    # Fraud probability increases with risk factors
-    fraud_prob = np.zeros(n_samples)
-    
-    # High amount ratio = higher fraud risk
-    fraud_prob += np.where(data['amount_ratio'] > 3, 0.15, 0)
-    fraud_prob += np.where(data['amount_ratio'] > 5, 0.2, 0)
-    
-    # Device issues = higher fraud risk
-    fraud_prob += np.where(data['device_rooted'] == 1, 0.2, 0)
-    fraud_prob += np.where(data['is_on_call'] == 1, 0.15, 0)
-    
-    # New merchant = higher fraud risk
-    fraud_prob += np.where(data['is_new_merchant'] == 1, 0.1, 0)
-    
-    # New device = higher fraud risk
-    fraud_prob += np.where(data['is_new_device'] == 1, 0.1, 0)
-    
-    # High velocity = higher fraud risk
-    fraud_prob += np.where(data['velocity_last_1hr'] > 5, 0.15, 0)
-    
-    # Suspicious hours = higher fraud risk
-    fraud_prob += np.where((data['hour_of_day'] >= 0) & (data['hour_of_day'] <= 5), 0.1, 0)
-    
-    # Low confidence = higher fraud risk
-    fraud_prob += np.where(data['swipe_confidence'] < 0.6, 0.15, 0)
-    
-    # Cap probability at 0.95
-    fraud_prob = np.clip(fraud_prob, 0, 0.95)
-    
-    # Generate labels
-    data['label'] = (np.random.random(n_samples) < fraud_prob).astype(int)
-    
-    print(f"Synthetic: Generated {n_samples} transactions with {data['label'].sum()} frauds ({data['label'].mean()*100:.2f}%)")
-    
-    return data
+print(f"\nFeature matrix shape: {X.shape}")
+print(f"Positive samples (fraud): {y.sum()} ({y.mean()*100:.2f}%)")
+print(f"Negative samples (legit): {(1-y).sum()} ({(1-y).mean()*100:.2f}%)")
 
-def load_data():
-    """Load data from available sources"""
-    data_frames = []
-    
-    # Try IEEE-CIS
-    if os.path.exists(IEEE_PATH):
-        try:
-            df = load_ieee_data()
-            data_frames.append(df)
-        except Exception as e:
-            print(f"Error loading IEEE data: {e}")
-    
-    # Try PaySim
-    if os.path.exists(PAYSIM_PATH):
-        try:
-            df = load_paysim_data()
-            data_frames.append(df)
-        except Exception as e:
-            print(f"Error loading PaySim data: {e}")
-    
-    # If no data loaded, generate synthetic
-    if not data_frames:
-        print("No external data found. Using synthetic data.")
-        return generate_synthetic_data(50000)
-    
-    # Combine all data
-    combined = pd.concat(data_frames, ignore_index=True)
-    print(f"Combined data: {len(combined)} transactions")
-    
-    return combined
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
 
-def train_model():
-    """Train the LightGBM model"""
-    print("=" * 60)
-    print("UPI SECURE PAY - LightGBM Fraud Detection Model Training")
-    print("=" * 60)
-    
-    # Load data
-    data = load_data()
-    
-    # Prepare features and labels
-    X = data[FEATURE_COLUMNS].fillna(0)
-    y = data['label']
-    
-    print(f"\nFeature matrix shape: {X.shape}")
-    print(f"Positive samples (fraud): {y.sum()} ({y.mean()*100:.2f}%)")
-    print(f"Negative samples (legit): {(y==0).sum()} ({(1-y.mean())*100:.2f}%)")
-    
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    
-    print(f"\nTraining set: {len(X_train)} samples")
-    print(f"Test set: {len(X_test)} samples")
-    
-    # Create LightGBM dataset
-    train_data = lgb.Dataset(X_train, label=y_train)
-    test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
-    
-    # LightGBM parameters
-    params = {
-        'objective': 'binary',
-        'metric': 'binary_logloss',
-        'boosting_type': 'gbdt',
-        'n_estimators': 200,
-        'learning_rate': 0.05,
-        'max_depth': 6,
-        'num_leaves': 31,
-        'min_child_samples': 20,
-        'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'random_state': 42,
-        'verbose': -1
-    }
-    
-    print("\nTraining LightGBM model...")
-    print(f"Parameters: n_estimators={params['n_estimators']}, learning_rate={params['learning_rate']}, max_depth={params['max_depth']}")
-    
-    # Train model
-    model = lgb.train(
-        params,
-        train_data,
-        num_boost_round=200,
-        valid_sets=[train_data, test_data],
-        valid_names=['train', 'test'],
-        callbacks=[lgb.early_stopping(50), lgb.log_evaluation(50)]
-    )
-    
-    # Predictions
-    y_pred_proba = model.predict(X_test)
-    y_pred = (y_pred_proba > 0.5).astype(int)
-    
-    # Metrics
-    print("\n" + "=" * 60)
-    print("MODEL EVALUATION METRICS")
-    print("=" * 60)
-    
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    
-    print(f"Accuracy:  {accuracy*100:.2f}%")
-    print(f"Precision: {precision*100:.2f}%")
-    print(f"Recall:    {recall*100:.2f}%")
-    print(f"F1 Score: {f1*100:.2f}%")
-    
-    print("\nConfusion Matrix:")
-    cm = confusion_matrix(y_test, y_pred)
-    print(f"              Predicted")
-    print(f"              Legit   Fraud")
-    print(f"Actual Legit  {cm[0,0]:5d}  {cm[0,1]:5d}")
-    print(f"       Fraud {cm[1,0]:5d}  {cm[1,1]:5d}")
-    
-    # Feature importance
-    print("\nFeature Importance:")
-    importance = pd.DataFrame({
-        'feature': FEATURE_COLUMNS,
-        'importance': model.feature_importance()
-    }).sort_values('importance', ascending=False)
-    
-    for _, row in importance.iterrows():
-        print(f"  {row['feature']:25s}: {row['importance']}")
-    
-    # Save model
-    model_path = 'model.pkl'
-    dump(model, model_path)
-    
-    # Get file size
-    file_size = os.path.getsize(model_path)
-    file_size_mb = file_size / (1024 * 1024)
-    
-    print("\n" + "=" * 60)
-    print("TRAINING COMPLETE!")
-    print("=" * 60)
-    print(f"Model saved to: {model_path}")
-    print(f"Model file size: {file_size_mb:.2f} MB")
-    print("\n✅ Ready for real data upgrade!")
-    
-    return model
+print(f"\nTraining set: {len(X_train):,} samples")
+print(f"Test set: {len(X_test):,} samples")
 
-if __name__ == "__main__":
-    train_model()
+# Train LightGBM with scale_pos_weight for imbalanced data
+print("\nTraining LightGBM model...")
+scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
+print(f"Scale pos weight: {scale_pos_weight:.2f}")
+
+params = {
+    'objective': 'binary',
+    'metric': 'binary_logloss',
+    'boosting_type': 'gbdt',
+    'n_estimators': 300,
+    'learning_rate': 0.05,
+    'max_depth': 8,
+    'num_leaves': 64,
+    'scale_pos_weight': scale_pos_weight,
+    'random_state': 42,
+    'verbose': -1
+}
+
+model = lgb.LGBMClassifier(**params)
+model.fit(
+    X_train, y_train,
+    eval_set=[(X_test, y_test)],
+    callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=True)]
+)
+
+# Predictions
+y_pred = model.predict(X_test)
+y_pred_proba = model.predict_proba(X_test)[:, 1]
+
+# Metrics
+print("\n" + "=" * 60)
+print("MODEL EVALUATION METRICS")
+print("=" * 60)
+
+accuracy = accuracy_score(y_test, y_pred) * 100
+precision = precision_score(y_test, y_pred) * 100
+recall = recall_score(y_test, y_pred) * 100
+f1 = f1_score(y_test, y_pred) * 100
+
+print(f"Accuracy:  {accuracy:.2f}%")
+print(f"Precision: {precision:.2f}%")
+print(f"Recall:    {recall:.2f}%")
+print(f"F1 Score:  {f1:.2f}%")
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+print(f"\nConfusion Matrix:")
+print(f"              Predicted")
+print(f"              Legit   Fraud")
+print(f"Actual Legit  {cm[0,0]:5d}  {cm[0,1]:5d}")
+print(f"       Fraud  {cm[1,0]:5d}  {cm[1,1]:5d}")
+
+# Feature Importance
+print(f"\nFeature Importance:")
+importance = pd.DataFrame({
+    'feature': feature_cols,
+    'importance': model.feature_importances_
+}).sort_values('importance', ascending=False)
+
+for idx, row in importance.head(10).iterrows():
+    print(f"  {row['feature']:25s}: {row['importance']}")
+
+# Save model
+model_path = 'model.pkl'
+with open(model_path, 'wb') as f:
+    pickle.dump({
+        'model': model,
+        'feature_cols': feature_cols,
+        'type_map': type_map,
+        'data_source': 'PaySim'
+    }, f)
+
+file_size = os.path.getsize(model_path) / (1024 * 1024)
+print(f"\n{'=' * 60}")
+print(f"TRAINING COMPLETE!")
+print(f"{'=' * 60}")
+print(f"Model saved to: {model_path}")
+print(f"Model file size: {file_size:.2f} MB")
+print(f"Data source: PaySim (6.3M transactions)")
+print(f"\n✅ Ready for real-time fraud detection!")

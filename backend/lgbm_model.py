@@ -1,38 +1,24 @@
 """
 LightGBM Fraud Detection Model Loader and Predictor
 Loads model.pkl and provides prediction function
+Updated for PaySim dataset
 """
 
 import os
 import numpy as np
 import pandas as pd
-from joblib import load
 
 # Model file path
 MODEL_PATH = 'model.pkl'
 
-# Feature columns (must match training)
-FEATURE_COLUMNS = [
-    'amount',
-    'is_new_merchant',
-    'hour_of_day',
-    'is_new_device',
-    'device_rooted',
-    'is_on_call',
-    'location_changed',
-    'velocity_last_1hr',
-    'user_avg_amount',
-    'swipe_confidence',
-    'amount_ratio'
-]
-
 # Global model variable
 _model = None
 _model_loaded = False
+_feature_cols = None
 
 def load_model():
     """Load the trained LightGBM model"""
-    global _model, _model_loaded
+    global _model, _model_loaded, _feature_cols
     
     if _model_loaded:
         return _model
@@ -45,8 +31,28 @@ def load_model():
         return None
     
     try:
-        _model = load(MODEL_PATH)
-        print(f"LightGBM model loaded successfully from {MODEL_PATH}")
+        with open(MODEL_PATH, 'rb') as f:
+            _model = pickle.load(f)
+        
+        # Handle both old and new model formats
+        if isinstance(_model, dict):
+            _feature_cols = _model.get('feature_cols', [])
+            data_source = _model.get('data_source', 'Unknown')
+        else:
+            # Old format - use default features
+            _feature_cols = [
+                'type_CASH_IN', 'type_CASH_OUT', 'type_DEBIT', 'type_PAYMENT', 'type_TRANSFER',
+                'amount', 'log_amount',
+                'oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest',
+                'balance_change_orig', 'balance_change_dest',
+                'balance_error_orig', 'balance_error_dest',
+                'is_flagged', 'type_numeric', 'step'
+            ]
+            data_source = 'Unknown'
+        
+        print(f"LightGBM model loaded from {MODEL_PATH}")
+        print(f"Data source: {data_source}")
+        print(f"Features: {len(_feature_cols)} columns")
         _model_loaded = True
         return _model
     except Exception as e:
@@ -60,22 +66,12 @@ def predict_fraud_score(transaction):
     Predict fraud probability for a transaction.
     
     Args:
-        transaction: TransactionInput object with these required fields:
-            - amount: float
-            - is_new_merchant: bool
-            - hour_of_day: int (0-23)
-            - is_new_device: bool
-            - device_rooted: bool
-            - is_on_call: bool
-            - location_changed: bool
-            - velocity_last_1hr: int
-            - user_avg_amount: float
-            - swipe_confidence: float (0.0-1.0)
+        transaction: TransactionInput object
     
     Returns:
         float: Fraud probability between 0.0 and 1.0
     """
-    global _model, _model_loaded
+    global _model, _model_loaded, _feature_cols
     
     # Load model if not loaded
     if not _model_loaded:
@@ -87,29 +83,88 @@ def predict_fraud_score(transaction):
         return 0.0
     
     try:
-        # Extract features from transaction
+        # Extract features - map transaction to PaySim format
+        amount = float(transaction.amount)
+        
+        # Default values for UPI-style transaction
+        type_val = getattr(transaction, 'type', 'PAYMENT').upper() if hasattr(transaction, 'type') else 'PAYMENT'
+        oldbalance_org = getattr(transaction, 'old_balance_org', 0) if hasattr(transaction, 'old_balance_org') else 10000
+        newbalance_org = getattr(transaction, 'new_balance_org', 0) if hasattr(transaction, 'new_balance_org') else (oldbalance_org - amount)
+        oldbalance_dest = getattr(transaction, 'old_balance_dest', 0) if hasattr(transaction, 'old_balance_dest') else 5000
+        newbalance_dest = getattr(transaction, 'new_balance_dest', 0) if hasattr(transaction, 'new_balance_dest') else (oldbalance_dest + amount)
+        
+        # Encode transaction type (UPI types to PaySim equivalents)
+        type_map = {
+            'CASH_IN': 'CASH_IN', 'CASH_OUT': 'CASH_OUT', 
+            'TRANSFER': 'TRANSFER', 'PAYMENT': 'PAYMENT', 
+            'DEBIT': 'DEBIT', 'UPI': 'PAYMENT'
+        }
+        mapped_type = type_map.get(type_val, 'PAYMENT')
+        
+        # Transaction type one-hot encoding
+        type_cash_in = 1 if mapped_type == 'CASH_IN' else 0
+        type_cash_out = 1 if mapped_type == 'CASH_OUT' else 0
+        type_debit = 1 if mapped_type == 'DEBIT' else 0
+        type_payment = 1 if mapped_type == 'PAYMENT' else 0
+        type_transfer = 1 if mapped_type == 'TRANSFER' else 0
+        
+        # Balance changes
+        balance_change_orig = newbalance_org - oldbalance_org
+        balance_change_dest = newbalance_dest - oldbalance_dest
+        balance_error_orig = oldbalance_org - amount - newbalance_org
+        balance_error_dest = oldbalance_dest + amount - newbalance_dest
+        
+        # Is flagged (from UPI flags if available)
+        is_flagged = 1 if (getattr(transaction, 'is_high_risk', False) or getattr(transaction, 'is_flagged', False)) else 0
+        
+        # Step (time - use hour of day as proxy)
+        hour_of_day = getattr(transaction, 'hour_of_day', 12) if hasattr(transaction, 'hour_of_day') else 12
+        step = hour_of_day
+        
+        # Log amount
+        log_amount = np.log1p(amount)
+        
+        # Type numeric
+        type_numeric_map = {'CASH_IN': 0, 'CASH_OUT': 1, 'DEBIT': 2, 'PAYMENT': 3, 'TRANSFER': 4}
+        type_numeric = type_numeric_map.get(mapped_type, 3)
+        
+        # Build feature vector
         features = pd.DataFrame([{
-            'amount': float(transaction.amount),
-            'is_new_merchant': int(transaction.is_new_merchant) if hasattr(transaction, 'is_new_merchant') else 0,
-            'hour_of_day': int(transaction.hour_of_day) if hasattr(transaction, 'hour_of_day') else 12,
-            'is_new_device': int(transaction.is_new_device) if hasattr(transaction, 'is_new_device') else 0,
-            'device_rooted': int(transaction.device_rooted) if hasattr(transaction, 'device_rooted') else 0,
-            'is_on_call': int(transaction.is_on_call) if hasattr(transaction, 'is_on_call') else 0,
-            'location_changed': int(transaction.location_changed) if hasattr(transaction, 'location_changed') else 0,
-            'velocity_last_1hr': int(transaction.velocity_last_1hr) if hasattr(transaction, 'velocity_last_1hr') else 0,
-            'user_avg_amount': float(transaction.user_avg_amount) if hasattr(transaction, 'user_avg_amount') else 1000,
-            'swipe_confidence': float(transaction.swipe_confidence) if hasattr(transaction, 'swipe_confidence') else 0.8,
-            'amount_ratio': float(transaction.amount) / float(transaction.user_avg_amount) if hasattr(transaction, 'user_avg_amount') and transaction.user_avg_amount > 0 else 1.0
+            'type_CASH_IN': type_cash_in,
+            'type_CASH_OUT': type_cash_out,
+            'type_DEBIT': type_debit,
+            'type_PAYMENT': type_payment,
+            'type_TRANSFER': type_transfer,
+            'amount': amount,
+            'log_amount': log_amount,
+            'oldbalanceOrg': oldbalance_org,
+            'newbalanceOrig': newbalance_org,
+            'oldbalanceDest': oldbalance_dest,
+            'newbalanceDest': newbalance_dest,
+            'balance_change_orig': balance_change_orig,
+            'balance_change_dest': balance_change_dest,
+            'balance_error_orig': balance_error_orig,
+            'balance_error_dest': balance_error_dest,
+            'is_flagged': is_flagged,
+            'type_numeric': type_numeric,
+            'step': step
         }])
         
         # Ensure correct column order
-        features = features[FEATURE_COLUMNS]
+        if _feature_cols:
+            features = features[[c for c in _feature_cols if c in features.columns]]
         
         # Handle any NaN values
         features = features.fillna(0)
         
         # Get fraud probability
-        fraud_probability = _model.predict(features)[0]
+        if hasattr(_model, 'predict'):
+            # Old format - model directly
+            fraud_probability = _model.predict(features)[0]
+        else:
+            # New format - dict with model key
+            model_obj = _model.get('model', _model)
+            fraud_probability = model_obj.predict(features)[0]
         
         # Ensure within bounds
         fraud_probability = max(0.0, min(1.0, fraud_probability))
@@ -118,6 +173,8 @@ def predict_fraud_score(transaction):
         
     except Exception as e:
         print(f"Error predicting fraud score: {e}")
+        import traceback
+        traceback.print_exc()
         return 0.0
 
 def is_model_loaded():
@@ -133,12 +190,18 @@ def get_model_info():
             "message": "Model not loaded. Run train_model.py first."
         }
     
+    data_source = "Unknown"
+    if isinstance(_model, dict):
+        data_source = _model.get('data_source', 'Unknown')
+    
     return {
         "loaded": True,
         "model_path": MODEL_PATH,
-        "features": FEATURE_COLUMNS,
-        "n_features": len(FEATURE_COLUMNS)
+        "data_source": data_source,
+        "features": _feature_cols or [],
+        "n_features": len(_feature_cols) if _feature_cols else 0
     }
 
 # Auto-load model on import
+import pickle
 load_model()
