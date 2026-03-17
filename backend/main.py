@@ -5,7 +5,7 @@ import asyncio
 import json
 import random
 from datetime import datetime
-from schemas import TransactionInput, TransactionResult, DashboardStats
+from schemas import TransactionInput, TransactionResult, DashboardStats, RiskFactor
 from risk_engine import RiskEngine
 from fraud_report import FraudReport, fraud_report_manager
 from network_graph import fraud_network
@@ -179,7 +179,6 @@ async def analyze_transaction(transaction: TransactionInput):
         
         # Add LSTM anomaly reason to risk factors if high
         if lstm_sequence_score > 0.5 and lstm_anomaly_reason:
-            from schemas import RiskFactor
             result.risk_factors.append(RiskFactor(
                 name="LSTM Sequence Anomaly",
                 description=lstm_anomaly_reason,
@@ -525,17 +524,21 @@ async def startup_event():
 async def report_fraud(report: FraudReport):
     """
     Report a fraudulent transaction.
-    Adds fraud UPI to blacklist and returns case reference.
+    Adds fraud UPI to blacklist, returns case reference, sends confirmation email.
     """
     global db_session, db_initialized
     
     result = fraud_report_manager.process_fraud_report(report)
     
+    # result is now a dict with 'report' and 'email_sent' keys
+    fraud_report_obj = result["report"]
+    email_sent = result["email_sent"]
+    
     # Save to database if available
     if db_initialized and db_session:
         try:
             report_data = {
-                "case_reference": result.case_reference,
+                "case_reference": fraud_report_obj.case_reference,
                 "fraud_upi_id": report.fraud_upi_id,
                 "amount_lost": report.amount,
                 "description": report.description,
@@ -545,12 +548,22 @@ async def report_fraud(report: FraudReport):
         except Exception as e:
             print(f"Error saving fraud report to DB: {e}")
     
-    return {
+    # Build response
+    response = {
         "success": True,
-        "case_reference": result.case_reference,
+        "case_reference": fraud_report_obj.case_reference,
         "message": f"Fraud report registered. UPI {report.fraud_upi_id} added to blacklist.",
-        "timestamp": result.timestamp
+        "timestamp": fraud_report_obj.timestamp,
+        "email_sent": email_sent
     }
+    
+    # Add confirmation message if email was sent
+    if email_sent:
+        response["confirmation_message"] = f"✅ Report filed! Confirmation sent to {report.user_email}"
+    else:
+        response["confirmation_message"] = "⚠️ Report filed but email could not be sent"
+    
+    return response
 
 
 # UPGRADE 2: Fraud Network Graph Endpoint

@@ -10,6 +10,16 @@ venv/
 dist/
 build/
 
+# Model files (large - don't commit)
+*.pkl
+*.pth
+*.h5
+model.pkl
+
+# Backend sensitive files
+backend/fraud_report.py
+backend/database.db
+
 # Node
 node_modules/
 npm-debug.log*

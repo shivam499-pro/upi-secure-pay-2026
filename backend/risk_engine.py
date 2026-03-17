@@ -18,8 +18,8 @@ class RiskEngine:
         # Maximum possible risk score
         self.MAX_RISK_SCORE = 100.0
         # Thresholds for risk levels
-        self.BLOCK_THRESHOLD = 75.0
-        self.ALERT_THRESHOLD = 50.0
+        self.BLOCK_THRESHOLD = 70.0
+        self.ALERT_THRESHOLD = 35.0
         # Score weights for combined scoring (ML Cascade Engine)
         # Level 1: Safety Engine + LightGBM
         # Level 2: LSTM Sequence
@@ -227,6 +227,14 @@ class RiskEngine:
         else:
             status = "approved"
         
+        # Determine decision string
+        if is_blocked:
+            decision = "BLOCK"
+        elif is_alert:
+            decision = "ALERT"
+        else:
+            decision = "APPROVE"
+        
         return TransactionResult(
             transaction_id=transaction_id,
             sender_upi="user@upi",  # Default since not provided
@@ -236,6 +244,7 @@ class RiskEngine:
             risk_level=risk_level,
             is_blocked=is_blocked,
             is_alert=is_alert,
+            decision=decision,
             message=message,
             risk_factors=risk_factors,
             timestamp=timestamp,
@@ -246,7 +255,9 @@ class RiskEngine:
         self, 
         transaction: TransactionInput,
         lstm_sequence_score: float = 0.0,
-        level3_score: float = 0.0
+        level3_score: float = 0.0,
+        behavioral_deviation_score: float = 0.0,
+        network_risk_score: float = 0.0
     ) -> TransactionResult:
         """
         Enhanced transaction analysis with LSTM sequence and Level 3 GNN+NLP scores.
@@ -295,6 +306,14 @@ class RiskEngine:
         else:
             status = "approved"
         
+        # Determine decision string
+        if is_blocked:
+            decision = "BLOCK"
+        elif is_alert:
+            decision = "ALERT"
+        else:
+            decision = "APPROVE"
+        
         return TransactionResult(
             transaction_id=transaction_id,
             sender_upi="user@upi",  # Default since not provided
@@ -304,6 +323,7 @@ class RiskEngine:
             risk_level=risk_level,
             is_blocked=is_blocked,
             is_alert=is_alert,
+            decision=decision,
             message=message,
             risk_factors=risk_factors,
             timestamp=timestamp,

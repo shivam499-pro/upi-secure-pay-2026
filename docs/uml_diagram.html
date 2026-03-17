@@ -546,6 +546,37 @@ flowchart TB
         </div>
     </div>
     
+    <div class="section">
+        <h2>9. THE ML CASCADE — HOW WE SOLVE THE SPEED vs ACCURACY TRADE-OFF</h2>
+        <div class="diagram-container" style="max-width: 1100px;">
+            <div class="mermaid">
+gantt
+    title Traditional Approach (150ms+)
+    dateFormat X
+    axisFormat %sms
+    
+    section Traditional
+    Deep Learning on ALL transactions : 0, 150
+    
+    title Our Cascade Architecture
+    dateFormat X
+    axisFormat %sms
+    
+    section Safety Engine
+    100% transactions : 0, 1
+    
+    section L1 LightGBM
+    70% approved here : 1, 10
+    
+    section L2 LSTM
+    20% escalated : 10, 25
+    
+    section L3 GNN+NLP
+    5-10% deepest risk : 25, 50
+            </div>
+        </div>
+    </div>
+    
     <script>
         mermaid.initialize({
             startOnLoad: true,

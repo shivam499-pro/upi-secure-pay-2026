@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Cascade - Speed vs Accuracy</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #111111;
+            font-family: Arial, sans-serif;
+            width: 1280px;
+            height: 500px;
+            overflow: hidden;
+            color: white;
+            padding: 20px;
+        }
+        .title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+        .section { margin-bottom: 20px; }
+        .traditional { margin-bottom: 15px; }
+        .traditional-label { font-size: 14px; margin-bottom: 5px; color: #e05c3a; }
+        .traditional-bar {
+            height: 28px;
+            background: #e05c3a;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            color: white;
+        }
+        .cascade { margin-bottom: 20px; }
+        .cascade-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            height: 28px;
+        }
+        .cascade-label { width: 130px; font-size: 13px; color: white; }
+        .cascade-bar {
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            margin-right: 10px;
+        }
+        .cascade-bar.gold { background: #f5a623; color: #111; }
+        .cascade-bar.gray { background: #555; color: white; }
+        .cascade-bar.longer { width: 180px; }
+        .cascade-bar.medium { width: 120px; }
+        .cascade-bar.short { width: 60px; }
+        .pill { padding: 3px 10px; border-radius: 12px; font-size: 10px; margin-right: 8px; }
+        .pill.gold { background: #f5a623; color: #111; }
+        .pill.gray { background: #555; color: white; }
+        .cascade-text { font-size: 12px; color: #aaa; }
+        .cascade-text.gold { color: #f5a623; font-weight: bold; }
+        .metrics {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .metric-box {
+            width: 220px;
+            height: 60px;
+            border: 2px solid #f5a623;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+        }
+        .metric-value { font-size: 22px; font-weight: bold; color: #f5a623; }
+        .metric-label { font-size: 11px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="title">THE ML CASCADE — HOW WE SOLVE THE SPEED vs ACCURACY TRADE-OFF</div>
+    
+    <div class="section traditional">
+        <div class="traditional-label">Traditional approach</div>
+        <div class="traditional-bar">Deep Learning on ALL transactions — 150ms+ always</div>
+    </div>
+    
+    <div class="section cascade">
+        <div class="cascade-row">
+            <div class="cascade-label">Safety Engine</div>
+            <div class="cascade-bar gold short"></div>
+            <span class="pill gold"><1ms</span>
+            <span class="cascade-text">100% of transactions</span>
+        </div>
+        
+        <div class="cascade-row">
+            <div class="cascade-label">L1 LightGBM</div>
+            <div class="cascade-bar gold medium"></div>
+            <span class="pill gold"><10ms</span>
+            <span class="cascade-text gold">70% approved here ✓</span>
+        </div>
+        
+        <div class="cascade-row">
+            <div class="cascade-label">L2 LSTM</div>
+            <div class="cascade-bar gray longer"></div>
+            <span class="pill gray">~25ms</span>
+            <span class="cascade-text">20% escalated</span>
+        </div>
+        
+        <div class="cascade-row">
+            <div class="cascade-label">L3 GNN+NLP</div>
+            <div class="cascade-bar gray longer"></div>
+            <span class="pill gray">~50ms</span>
+            <span class="cascade-text">5-10% deepest risk</span>
+        </div>
+    </div>
+    
+    <div class="metrics">
+        <div class="metric-box">
+            <div class="metric-value">70%</div>
+            <div class="metric-label">Transactions in <10ms</div>
+        </div>
+        
+        <div class="metric-box">
+            <div class="metric-value">99.88%</div>
+            <div class="metric-label">Recall Rate</div>
+        </div>
+        
+        <div class="metric-box">
+            <div class="metric-value">70%</div>
+            <div class="metric-label">Less compute cost</div>
+        </div>
+    </div>
+</body>
+</html>

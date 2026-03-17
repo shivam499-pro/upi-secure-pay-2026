@@ -38,6 +38,7 @@ class TransactionResult(BaseModel):
     risk_level: str  # low, medium, high, critical
     is_blocked: bool
     is_alert: bool
+    decision: str  # BLOCK, ALERT, APPROVE
     message: str
     risk_factors: List[RiskFactor]
     timestamp: str
