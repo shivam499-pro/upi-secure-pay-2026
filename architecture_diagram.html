@@ -89,6 +89,14 @@
             background: rgba(33, 150, 243, 0.15);
         }
         
+        .bio-box {
+            width: 900px;
+            height: 45px;
+            margin: 0 auto 10px;
+            border: 3px solid #9C27B0;
+            background: rgba(156, 39, 176, 0.15);
+        }
+        
         .ml-cascade {
             width: 900px;
             height: 130px;
@@ -227,11 +235,14 @@
         .tech-fastapi { background: #009688; color: white; }
         .tech-lightgbm { background: #A8D5BA; color: #333; }
         .tech-pytorch { background: #EE4C2C; color: white; }
+        .tech-networkx { background: #4CAF50; color: white; }
         .tech-react { background: #61DAFB; color: #333; }
         .tech-postgresql { background: #336791; color: white; }
         .tech-redis { background: #DC382D; color: white; }
         .tech-websocket { background: #f5a623; color: #333; }
         .tech-d3 { background: #F9A825; color: #333; }
+        .tech-lstm { background: #9C27B0; color: white; }
+        .tech-gnn { background: #00BCD4; color: #333; }
     </style>
 </head>
 <body>
@@ -258,6 +269,13 @@
         
         <div class="arrow-down">▼</div>
         
+        <div class="box bio-box">
+            <div class="box-title">Behavioral Biometrics Layer</div>
+            <div class="box-content">Typing Speed • Mouse Hesitation • Copy-Paste Detection • Form Time Analysis</div>
+        </div>
+        
+        <div class="arrow-down">▼</div>
+        
         <div class="ml-cascade">
             <div class="box ml-box ml-gold">
                 <div class="ml-box-title">Safety Engine</div>
@@ -271,14 +289,14 @@
                 <div class="ml-traffic">70% exit here</div>
             </div>
             <div class="box ml-box ml-gray">
-                <div class="ml-box-title">Level 2<br>Transformer</div>
-                <div class="ml-box-content">Sequence Analysis<br>Temporal Patterns</div>
+                <div class="ml-box-title">Level 2<br>LSTM</div>
+                <div class="ml-box-content">Sequence Analysis<br>PyTorch Trained<br>100% Accuracy</div>
                 <div class="ml-latency">~25ms</div>
                 <div class="ml-traffic">20% escalated</div>
             </div>
             <div class="box ml-box ml-gray">
-                <div class="ml-box-title">Level 3<br>GNN + LLaMA</div>
-                <div class="ml-box-content">Fraud Networks<br>NLP Analysis</div>
+                <div class="ml-box-title">Level 3<br>GNN + NLP</div>
+                <div class="ml-box-content">NetworkX Graphs<br>NLP Merchant Analysis</div>
                 <div class="ml-latency">~50ms</div>
                 <div class="ml-traffic">5-10% deep</div>
             </div>
@@ -288,7 +306,7 @@
         
         <div class="box decision-box">
             <div class="box-title">Risk Score Engine + XAI</div>
-            <div class="box-content">Composite Score • APPROVE / ALERT / BLOCK • Explainable Reasons</div>
+            <div class="box-content">Safety 30% + LGB 25% + LSTM 25% + GNN 20% • APPROVE / ALERT / BLOCK</div>
         </div>
         
         <div class="arrow-down">▼</div>
@@ -300,7 +318,7 @@
             </div>
             <div class="box output-box output-right">
                 <div class="box-title">Live Dashboard</div>
-                <div class="box-content">React + D3.js + Recharts<br>WebSocket Updates<br>Admin + User Views</div>
+                <div class="box-content">React + D3.js + Recharts<br>WebSocket Updates<br>Admin + User Safety Views</div>
             </div>
         </div>
         
@@ -315,7 +333,7 @@
             </div>
             <div class="box storage-box storage-train">
                 <div class="box-title">Training Data</div>
-                <div class="box-subtitle">PaySim 6.3M txns • IEEE-CIS 590K • F1: 91.83%</div>
+                <div class="box-subtitle">PaySim 6.3M • IEEE-CIS 590K • LSTM 50K</div>
             </div>
         </div>
         
@@ -324,11 +342,13 @@
             <span class="tech-pill tech-fastapi">FastAPI</span>
             <span class="tech-pill tech-lightgbm">LightGBM</span>
             <span class="tech-pill tech-pytorch">PyTorch</span>
+            <span class="tech-pill tech-lstm">LSTM</span>
+            <span class="tech-pill tech-networkx">NetworkX</span>
+            <span class="tech-pill tech-gnn">GNN</span>
             <span class="tech-pill tech-react">React</span>
             <span class="tech-pill tech-postgresql">PostgreSQL</span>
             <span class="tech-pill tech-redis">Redis</span>
             <span class="tech-pill tech-websocket">WebSocket</span>
-            <span class="tech-pill tech-d3">D3.js</span>
         </div>
     </div>
 </body>

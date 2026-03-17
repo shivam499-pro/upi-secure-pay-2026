@@ -62,6 +62,32 @@ function App() {
     user_avg_amount: 1000,
     swipe_confidence: 0.8
   });
+  
+  // Behavioral Biometrics State
+  const [behavioralData, setBehavioralData] = useState({
+    typingSpeed: 0,
+    formTime: 0,
+    mousePauses: 0,
+    pasteDetected: false,
+    behavioralScore: 100,
+    behavioralStatus: 'normal'
+  });
+  
+  // Behavioral tracking refs
+  const behavioralRef = useRef({
+    formOpenTime: null,
+    firstFocusTime: null,
+    typingStartTime: null,
+    typingEndTime: null,
+    charCount: 0,
+    lastMouseMove: null,
+    mouseStopCount: 0,
+    isAmountPasted: false,
+    isUpiPasted: false,
+    fieldFocusOrder: [],
+    clickCount: 0,
+    formStartTime: null
+  });
 
   // Chart data
   const [chartData, setChartData] = useState([]);
@@ -161,11 +187,127 @@ function App() {
       [name]: type === 'checkbox' ? checked : value 
     }));
   };
+  
+  // Calculate behavioral score
+  const calculateBehavioralScore = () => {
+    const data = behavioralRef.current;
+    const now = Date.now();
+    
+    // Calculate typing speed
+    let typingSpeed = 0;
+    if (data.typingStartTime && data.typingEndTime && data.charCount > 0) {
+      const timeInSeconds = (data.typingEndTime - data.typingStartTime) / 1000;
+      typingSpeed = timeInSeconds > 0 ? data.charCount / timeInSeconds : 0;
+    }
+    
+    // Calculate form completion time
+    let formTime = 0;
+    if (data.formStartTime) {
+      formTime = (now - data.formStartTime) / 1000;
+    }
+    
+    // Calculate score
+    let score = 1.0;
+    const reasons = [];
+    
+    if (typingSpeed > 0 && typingSpeed < 1) {
+      score -= 0.2;
+      reasons.push('Slow typing');
+    }
+    if (typingSpeed > 15) {
+      score -= 0.1;
+      reasons.push('Pasted content detected');
+    }
+    if (data.mouseStopCount > 5) {
+      score -= 0.15;
+      reasons.push('Many mouse pauses');
+    }
+    if (formTime > 0 && formTime < 5) {
+      score -= 0.3;
+      reasons.push('Too fast (possible bot)');
+    }
+    if (formTime > 300) {
+      score -= 0.25;
+      reasons.push('Taking too long (guided?)');
+    }
+    if (data.isUpiPasted) {
+      score -= 0.2;
+      reasons.push('UPI ID was pasted');
+    }
+    if (data.isAmountPasted) {
+      score -= 0.1;
+      reasons.push('Amount was pasted');
+    }
+    
+    score = Math.max(0.1, Math.min(1.0, score));
+    
+    // Determine status
+    let status = 'normal';
+    if (score < 0.4) status = 'suspicious';
+    else if (score < 0.7) status = 'warning';
+    
+    // Update state
+    setBehavioralData({
+      typingSpeed: typingSpeed.toFixed(1),
+      formTime: Math.round(formTime),
+      mousePauses: data.mouseStopCount,
+      pasteDetected: data.isAmountPasted || data.isUpiPasted,
+      behavioralScore: Math.round(score * 100),
+      behavioralStatus: status
+    });
+    
+    return score;
+  };
+  
+  // Handle form focus
+  const handleFormFocus = (e) => {
+    if (!behavioralRef.current.formStartTime) {
+      behavioralRef.current.formStartTime = Date.now();
+    }
+    if (!behavioralRef.current.firstFocusTime) {
+      behavioralRef.current.firstFocusTime = Date.now();
+    }
+    behavioralRef.current.fieldFocusOrder.push(e.target.name);
+  };
+  
+  // Handle typing
+  const handleTyping = (e) => {
+    if (!behavioralRef.current.typingStartTime) {
+      behavioralRef.current.typingStartTime = Date.now();
+    }
+    behavioralRef.current.charCount++;
+    behavioralRef.current.typingEndTime = Date.now();
+  };
+  
+  // Handle paste
+  const handlePaste = (e, field) => {
+    if (field === 'amount') {
+      behavioralRef.current.isAmountPasted = true;
+    } else if (field === 'upi') {
+      behavioralRef.current.isUpiPasted = true;
+    }
+  };
+  
+  // Handle mouse move
+  const handleMouseMove = (e) => {
+    const now = Date.now();
+    if (behavioralRef.current.lastMouseMove) {
+      const timeDiff = now - behavioralRef.current.lastMouseMove;
+      if (timeDiff > 2000) {
+        behavioralRef.current.mouseStopCount++;
+      }
+    }
+    behavioralRef.current.lastMouseMove = now;
+  };
 
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     const startTime = Date.now();
+    
+    // Calculate behavioral score
+    const behavioralScore = calculateBehavioralScore();
+    
     try {
       const payload = {
         transaction_id: "TXN" + Date.now(),
@@ -180,7 +322,7 @@ function App() {
         location_changed: formData.location_changed,
         velocity_last_1hr: parseInt(formData.velocity_last_1hr),
         user_avg_amount: parseFloat(formData.user_avg_amount),
-        swipe_confidence: parseFloat(formData.swipe_confidence)
+        swipe_confidence: behavioralScore
       };
       
       const response = await axios.post(`${API_BASE}/analyze-transaction`, payload);
@@ -416,7 +558,7 @@ function App() {
           {/* Transaction Analyzer Form */}
           <div className="card analyzer-card">
             <h2>Transaction Analyzer</h2>
-            <form onSubmit={handleSubmit} className="analyzer-form">
+            <form onSubmit={handleSubmit} className="analyzer-form" onMouseMove={handleMouseMove}>
               <div className="form-row">
                 <div className="form-group">
                   <label>Amount (INR)</label>
@@ -425,6 +567,9 @@ function App() {
                     name="amount"
                     value={formData.amount}
                     onChange={handleInputChange}
+                    onFocus={handleFormFocus}
+                    onKeyDown={handleTyping}
+                    onPaste={(e) => handlePaste(e, 'amount')}
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -438,6 +583,8 @@ function App() {
                     name="receiver_upi"
                     value={formData.receiver_upi}
                     onChange={handleInputChange}
+                    onFocus={handleFormFocus}
+                    onPaste={(e) => handlePaste(e, 'upi')}
                     placeholder="merchant@upi"
                     required
                   />
@@ -517,6 +664,48 @@ function App() {
 
               <button type="submit" className="analyze-btn">Analyze Transaction</button>
             </form>
+            
+            {/* Behavioral Biometrics Monitor */}
+            <div className="behavioral-monitor">
+              <h3>🧠 Behavioral Biometrics</h3>
+              <div className="behavioral-stats">
+                <div className="behavioral-stat">
+                  <span className="behavioral-icon">⌨️</span>
+                  <span className="behavioral-label">Typing Speed:</span>
+                  <span className="behavioral-value">{behavioralData.typingSpeed} chars/sec</span>
+                </div>
+                <div className="behavioral-stat">
+                  <span className="behavioral-icon">⏱️</span>
+                  <span className="behavioral-label">Form Time:</span>
+                  <span className="behavioral-value">{behavioralData.formTime} sec</span>
+                </div>
+                <div className="behavioral-stat">
+                  <span className="behavioral-icon">🖱️</span>
+                  <span className="behavioral-label">Mouse Pauses:</span>
+                  <span className="behavioral-value">{behavioralData.mousePauses}</span>
+                </div>
+                <div className="behavioral-stat">
+                  <span className="behavioral-icon">📋</span>
+                  <span className="behavioral-label">Paste Detected:</span>
+                  <span className="behavioral-value">{behavioralData.pasteDetected ? 'Yes' : 'No'}</span>
+                </div>
+              </div>
+              <div className="behavioral-score">
+                <span className="behavioral-label">🧠 Behavioral Score:</span>
+                <div className="score-bar-container">
+                  <div 
+                    className={`score-bar ${behavioralData.behavioralStatus}`}
+                    style={{width: `${behavioralData.behavioralScore}%`}}
+                  ></div>
+                </div>
+                <span className={`score-text ${behavioralData.behavioralStatus}`}>
+                  {behavioralData.behavioralScore}/100
+                  {behavioralData.behavioralStatus === 'normal' && ' - Normal interaction pattern'}
+                  {behavioralData.behavioralStatus === 'warning' && ' - Slightly unusual interaction'}
+                  {behavioralData.behavioralStatus === 'suspicious' && ' - Suspicious interaction detected!'}
+                </span>
+              </div>
+            </div>
 
             {/* User Behavioral Profile */}
             {userProfile && (

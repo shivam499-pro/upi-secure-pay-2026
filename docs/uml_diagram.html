@@ -75,7 +75,7 @@
     <h1>UPI Secure Pay - UML Diagrams</h1>
     
     <div class="section">
-        <h2>1. Class Diagram</h2>
+        <h2>1. Class Diagram - ML Cascade Architecture</h2>
         <div class="diagram-container">
             <div class="mermaid">
 classDiagram
@@ -95,323 +95,453 @@ classDiagram
         +float swipe_confidence
     }
     
-    class RiskFactor {
-        +str name
-        +str description
-        +str severity
-        +float weight
-    }
-    
     class TransactionResult {
         +str transaction_id
-        +str sender_upi
-        +str receiver_upi
-        +float amount
         +float risk_score
         +str risk_level
         +bool is_blocked
         +bool is_alert
         +str message
-        +List[RiskFactor] risk_factors
-        +str timestamp
         +str status
-    }
-    
-    class DashboardStats {
-        +int total_transactions
-        +int blocked_transactions
-        +int alerted_transactions
-        +int approved_transactions
-        +float average_risk_score
-        +List[TransactionResult] recent_transactions
+        +float sequence_risk_score
+        +float level3_score
+        +float gnn_score
+        +float nlp_score
+        +bool level2_active
+        +bool level3_active
     }
     
     class SafetyRuleEngine {
-        +List BLACKLIST
-        +Dict SCAM_KEYWORDS
+        +List~str~ FRAUD_BLACKLIST
+        +Dict~str, float~ SCAM_KEYWORDS
         +float HIGH_AMOUNT_THRESHOLD
-        +List[RiskFactor] check_blacklist(upi_id)
-        +List[RiskFactor] check_scam_keywords(description)
-        +List[RiskFactor] check_amount_threshold(amount)
-        +List[RiskFactor] check_device_rooted(device_rooted)
-        +List[RiskFactor] check_on_call(is_on_call)
-        +List[RiskFactor] analyze_transaction(transaction)
+        +float SUSPICIOUS_HOURS
+        +List~RiskFactor~ analyze_transaction(txn)
+    }
+    
+    class LightGBMModel {
+        -object model
+        +str model_path = "paysim_model.pkl"
+        +float threshold
+        +float f1_score
+        +float predict_fraud_score(txn)
+        +bool is_model_loaded()
+    }
+    
+    class LSTMSequenceAnalyzer {
+        -object model
+        +str model_path = "lstm_model.pth"
+        +int hidden_size = 64
+        +int num_layers = 2
+        +float predict_sequence_risk(transactions)
+    }
+    
+    class GNNNLPAnalyzer {
+        -object graph
+        +Dict FRAUD_PATTERNS
+        +float predict_level3_risk(merchant_name, upi_id)
+        +float analyze_merchant_nlp(merchant_name, upi_id)
+        +float detect_fraud_patterns_gnn(account_id)
     }
     
     class RiskEngine {
-        +float MAX_RISK_SCORE
-        +float BLOCK_THRESHOLD
-        +float ALERT_THRESHOLD
-        -SafetyRuleEngine rule_engine
-        +float calculate_base_risk_score(risk_factors)
-        +float apply_ml_adjustment(base_score, transaction)
-        +Dict calculate_combined_risk_score(safety, ml, behavioral, network)
-        +str determine_risk_level(risk_score)
-        +Tuple determine_action(risk_score)
-        +TransactionResult analyze_transaction(transaction)
-        +TransactionResult analyze_transaction_enhanced(transaction, behavioral, network)
-    }
-    
-    class FraudReport {
-        +str fraud_upi_id
-        +float amount
-        +str description
-        +str reported_by
+        +float SAFETY_WEIGHT = 0.30
+        +float LGBM_WEIGHT = 0.25
+        +float LSTM_WEIGHT = 0.25
+        +float LEVEL3_WEIGHT = 0.20
+        +float BLOCK_THRESHOLD = 75.0
+        +float ALERT_THRESHOLD = 50.0
+        +TransactionResult analyze_transaction_enhanced(txn, lstm_score, level3_score)
+        +Dict calculate_combined_risk_score(safety, lgbm, lstm, level3)
     }
     
     class UserProfile {
         +str user_id
         +float avg_amount
-        +List usual_hours
+        +List~int~ usual_hours
+        +List~str~ usual_merchants
         +int transaction_count
-        +Dict merchant_visits
+        +List~float~ risk_score_history
+        +List~Dict~ recent_transactions
+        +void update_profile(txn)
+        +BehavioralDeviation get_behavioral_deviation(txn)
     }
     
-    TransactionInput --> RiskFactor : produces
-    RiskEngine --> TransactionResult : produces
-    SafetyRuleEngine --> RiskFactor : produces
-    RiskEngine --> SafetyRuleEngine : uses
+    class BehavioralDeviation {
+        +float deviation_score
+        +bool amount_deviation
+        +bool time_deviation
+        +bool merchant_deviation
+    }
+    
+    class FraudReport {
+        +str case_reference
+        +str fraud_upi_id
+        +float amount_lost
+        +str description
+        +str reported_by
+        +str timestamp
+    }
+    
+    class FraudReportManager {
+        +List~FraudReport~ reports
+        +SafetyRuleEngine rule_engine
+        +FraudReport process_fraud_report(report)
+        +void auto_blacklist(upi_id)
+    }
+    
+    TransactionInput --> SafetyRuleEngine
+    TransactionInput --> LightGBMModel
+    TransactionInput --> LSTMSequenceAnalyzer
+    TransactionInput --> GNNNLPAnalyzer
+    SafetyRuleEngine --> RiskEngine
+    LightGBMModel --> RiskEngine
+    LSTMSequenceAnalyzer --> RiskEngine
+    GNNNLPAnalyzer --> RiskEngine
+    RiskEngine --> TransactionResult
+    UserProfile --> RiskEngine
+    FraudReport --> FraudReportManager
+    FraudReportManager --> SafetyRuleEngine
             </div>
         </div>
     </div>
     
-    <div class="grid-2">
-        <div class="section">
-            <h2>2. Use Case Diagram</h2>
-            <div class="diagram-container">
-                <div class="mermaid">
-flowchart LR
-    subgraph Actors
-        U[User]
-        A[Admin]
-    end
-    
-    subgraph UseCases
-        UC1[Analyze Transaction]
-        UC2[View Dashboard]
-        UC3[Report Fraud]
-        UC4[View Fraud Network]
-        UC5[View User Profile]
-        UC6[Live Feed]
-    end
-    
-    U --> UC1
-    U --> UC2
-    U --> UC3
-    U --> UC6
-    A --> UC2
-    A --> UC3
-    A --> UC4
-    A --> UC5
-                </div>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>3. Component Diagram</h2>
-            <div class="diagram-container">
-                <div class="mermaid">
+    <div class="section">
+        <h2>2. Component Diagram - ML Cascade Flow</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
 flowchart TB
-    subgraph Client
-        D[React Dashboard]
+    subgraph Client["Client Layer"]
+        D1["React Admin Dashboard"]
+        D2["React User Safety Dashboard"]
     end
     
-    subgraph Backend
-        API[FastAPI Gateway]
-        RE[Risk Engine]
-        SE[Safety Rules]
-        ML[LightGBM]
-        BP[Behavioral Profile]
-        NG[Network Graph]
+    subgraph Gateway["FastAPI Gateway"]
+        JWT["JWT Auth + Pydantic Validation"]
     end
     
-    subgraph Storage
-        PG[(PostgreSQL)]
-        R[(Redis)]
+    subgraph Bio["Behavioral Biometrics Layer"]
+        T["Typing Speed"]
+        M["Mouse Hesitation"]
+        C["Copy-Paste Detection"]
+        F["Form Time Analysis"]
     end
     
-    D -->|HTTP/WebSocket| API
-    API --> RE
-    RE --> SE
-    RE --> ML
-    RE --> BP
-    RE --> NG
-    API --> PG
-    API --> R
-                </div>
+    subgraph Safety["Safety Rule Engine"]
+        B["Fraud Blacklist"]
+        K["Scam Keywords"]
+        DV["Device Check"]
+        V["Velocity Check"]
+    end
+    
+    subgraph ML1["Level 1: LightGBM"]
+        L1["PaySim 6.3M transactions"]
+        L2["91.83% F1 Score"]
+    end
+    
+    subgraph ML2["Level 2: LSTM"]
+        L3["50K sequences trained"]
+        L4["100% Accuracy"]
+    end
+    
+    subgraph ML3["Level 3: GNN + NLP"]
+        G1["NetworkX Graph Analysis"]
+        N1["NLP Merchant Detection"]
+    end
+    
+    subgraph Risk["Risk Score Engine"]
+        W["Safety 30% + LGB 25% + LSTM 25% + GNN 20%"]
+    end
+    
+    subgraph XAI["XAI Reason Generator"]
+        R["Generate Explanations"]
+    end
+    
+    subgraph Decision["Decision Engine"]
+        D["APPROVE / ALERT / BLOCK"]
+    end
+    
+    subgraph DB["Database Layer"]
+        PG["PostgreSQL"]
+        WS["WebSocket Push"]
+    end
+    
+    D1 --> D2
+    D1 --> JWT
+    D2 --> JWT
+    JWT --> Bio
+    Bio --> Safety
+    Safety --> ML1
+    ML1 -->|Score >= 0.3| ML2
+    ML1 -->|Score < 0.3| Risk
+    ML2 --> ML3
+    ML3 --> Risk
+    Risk --> XAI
+    XAI --> Decision
+    Decision --> PG
+    Decision --> WS
+    WS --> D1
             </div>
         </div>
     </div>
     
     <div class="section">
-        <h2>4. Sequence Diagram - Transaction Analysis</h2>
+        <h2>3. Sequence Diagram - Complete Transaction Analysis</h2>
         <div class="diagram-container">
             <div class="mermaid">
 sequenceDiagram
-    participant Client as Client/App
-    participant API as FastAPI
-    participant Rules as Safety Engine
-    participant ML as LightGBM Model
-    participant Profile as User Profile
-    participant Network as Network Graph
-    participant DB as PostgreSQL
-    participant WS as WebSocket
+    participant User
+    participant Dashboard
+    participant FastAPI
+    participant SafetyEngine
+    participant LightGBM
+    participant LSTM
+    participant GNNPlus
+    participant RiskEngine
+    participant Database
     
-    Client->>API: POST /analyze-transaction
-    API->>Rules: Analyze transaction rules
-    Rules-->>API: Risk factors
+    User->>Dashboard: Fill transaction form
+    Dashboard->>Dashboard: Track behavioral biometrics
     
-    API->>ML: Get ML fraud score
-    ML-->>API: ML risk score (0-100)
-    
-    API->>Profile: Get behavioral deviation
-    Profile-->>API: Behavioral deviation score
-    
-    API->>Network: Get network risk
-    Network-->>API: Network risk score
-    
-    API->>API: Calculate combined score
-    Note over API: Safety 40% + ML 30% + Behavioral 20% + Network 10%
-    
-    alt Risk Score >= 75
-        API-->>Client: BLOCKED
-    else Risk Score >= 50
-        API-->>Client: ALERT
-    else
-        API-->>Client: APPROVED
+    rect rgb(40, 40, 40)
+        Note over Dashboard,FastAPI: HTTP POST
+        Dashboard->>FastAPI: POST /analyze-transaction
+        FastAPI->>SafetyEngine: Check blacklist + rules
+        SafetyEngine-->>FastAPI: safety_score + reasons
     end
     
-    API->>DB: Save transaction
-    API->>WS: Broadcast to live feed
-    WS-->>Client: Real-time update
+    alt Hard block detected
+        FastAPI-->>Dashboard: BLOCK (< 1ms)
+    else Continue cascade
+        FastAPI->>LightGBM: predict_fraud_score()
+        LightGBM-->>FastAPI: lgbm_score (< 10ms)
+        
+        alt Score >= 0.3
+            FastAPI->>LSTM: predict_sequence_risk()
+            LSTM-->>FastAPI: sequence_score (~25ms)
+            FastAPI->>GNNPlus: predict_level3_risk()
+            GNNPlus-->>FastAPI: level3_score (~50ms)
+        end
+        
+        FastAPI->>RiskEngine: calculate_combined_score()
+        RiskEngine-->>FastAPI: final_score + decision
+        FastAPI->>Database: Save transaction
+        FastAPI-->>Dashboard: TransactionResult + XAI
+        Dashboard->>Dashboard: WebSocket broadcast
+    end
+    
+    Dashboard-->>User: Show APPROVE/ALERT/BLOCK
             </div>
         </div>
     </div>
     
     <div class="section">
-        <h2>5. Sequence Diagram - Fraud Reporting</h2>
+        <h2>4. ML Cascade Flowchart - Smart Routing</h2>
         <div class="diagram-container">
             <div class="mermaid">
-sequenceDiagram
-    participant User as User
-    participant API as FastAPI
-    participant Fraud as Fraud Report Manager
-    participant Rules as Safety Engine
-    participant DB as Database
+flowchart TD
+    A[Transaction Input] --> B["Safety Rule Engine<br/>< 1ms"]
+    B -->|Hard Block| C[BLOCK - Return instantly]
+    B -->|Pass| D["Level 1 LightGBM<br/>< 10ms"]
+    D -->|Score < 0.3<br/>~70% traffic| E[APPROVE - Exit cascade]
+    D -->|Score >= 0.3| F["Level 2 LSTM<br/>~25ms"]
+    F --> G["Level 3 GNN + NLP<br/>~50ms"]
+    G --> H[Composite Score Calculator]
+    H --> I["Safety 30% + LGB 25%<br/>+ LSTM 25% + GNN 20%"]
+    I -->|Score >= 0.7| J[BLOCK]
+    I -->|Score 0.35-0.7| K[ALERT - Show warning]
+    I -->|Score < 0.35| L[APPROVE]
+    J --> M[XAI Reason Generator]
+    K --> M
+    L --> M
+    M --> N[Response to User + Dashboard]
     
-    User->>API: POST /report-fraud
-    API->>Fraud: Process fraud report
-    Fraud->>Rules: Add to blacklist
-    Rules-->>Fraud: Updated blacklist
-    
-    Fraud->>Fraud: Generate case reference
-    Fraud->>DB: Save fraud report
-    
-    API-->>User: Success + case reference
+    style A fill:#1a1a1a,stroke:#f5a623,color:#fff
+    style B fill:#f5a623,stroke:#fff,color:#000
+    style C fill:#ff4444,stroke:#fff,color:#fff
+    style D fill:#f5a623,stroke:#fff,color:#000
+    style E fill:#00ff88,stroke:#fff,color:#000
+    style F fill:#f5a623,stroke:#fff,color:#000
+    style G fill:#f5a623,stroke:#fff,color:#000
+    style J fill:#ff4444,stroke:#fff,color:#fff
+    style K fill:#ffaa00,stroke:#fff,color:#000
+    style L fill:#00ff88,stroke:#fff,color:#000
             </div>
         </div>
     </div>
     
     <div class="grid-2">
         <div class="section">
-            <h2>6. State Diagram - Transaction</h2>
+            <h2>5. State Diagram - Transaction Lifecycle</h2>
             <div class="diagram-container">
                 <div class="mermaid">
 stateDiagram-v2
-    [*] --> Received
-    Received --> Analyzing: Submit
-    Analyzing --> SafetyCheck: Run rules
-    SafetyCheck --> MLCheck: Get ML score
-    MLCheck --> Combined: Aggregate scores
-    Combined --> Decision: Calculate final
+    [*] --> RECEIVED
     
-    Decision --> Approved: Score < 50
-    Decision --> Alerted: 50 <= Score < 75
-    Decision --> Blocked: Score >= 75
+    RECEIVED --> BEHAVIORAL_ANALYSIS: Submit form
+    BEHAVIORAL_ANALYSIS --> SAFETY_CHECK: Typing/Mouse tracked
     
-    Approved --> [*]
-    Alerted --> [*]
-    Blocked --> [*]
+    SAFETY_CHECK --> LEVEL1_LIGHTGBM: Pass rules
+    SAFETY_CHECK --> BLOCKED: Hard blacklist match
+    
+    LEVEL1_LIGHTGBM --> APPROVED: Score < 0.3
+    LEVEL1_LIGHTGBM --> LEVEL2_LSTM: Score >= 0.3
+    
+    LEVEL2_LSTM --> LEVEL3_GNN_NLP: Sequence anomaly
+    LEVEL2_LSTM --> RISK_SCORED: Normal sequence
+    
+    LEVEL3_GNN_NLP --> RISK_SCORED: Analysis complete
+    
+    RISK_SCORED --> APPROVED: Final Score < 35
+    RISK_SCORED --> ALERTED: 35 <= Score < 70
+    RISK_SCORED --> BLOCKED: Score >= 70
+    
+    APPROVED --> LOGGED_TO_DB: Save to PostgreSQL
+    ALERTED --> LOGGED_TO_DB: Save to PostgreSQL
+    BLOCKED --> LOGGED_TO_DB: Save to PostgreSQL
+    
+    LOGGED_TO_DB --> DASHBOARD_UPDATED: WebSocket push
+    DASHBOARD_UPDATED --> [*]
+                </div>
             </div>
         </div>
         
         <div class="section">
-            <h2>7. Data Flow Diagram</h2>
+            <h2>6. Entity Relationship Diagram</h2>
             <div class="diagram-container">
                 <div class="mermaid">
-flowchart TB
-    subgraph Data Stores
-        DB[(Transaction DB)]
-        R[(Redis Cache)]
-        BL[Blacklist]
-    end
+erDiagram
+    TRANSACTION ||--o{ USER_PROFILE : belongs_to
+    FRAUD_REPORT ||--|| FRAUD_BLACKLIST : creates
+    USER_PROFILE ||--o{ TRANSACTION : has_many
     
-    subgraph Processing
-        API[FastAPI]
-        RE[Risk Engine]
-        SE[Safety Rules]
-        ML[ML Model]
-    end
+    TRANSACTION {
+        int id PK
+        string transaction_id UK
+        float amount
+        string merchant_name
+        string merchant_upi_id
+        string decision
+        float risk_score
+        text reasons
+        string level_reached
+        float latency_ms
+        float sequence_risk_score
+        float level3_score
+        datetime created_at
+    }
     
-    subgraph Inputs
-        TX[Transaction]
-        FR[Fraud Report]
-    end
+    USER_PROFILE {
+        string user_id PK
+        float avg_amount
+        int transaction_count
+        json risk_score_history
+        datetime created_at
+        datetime updated_at
+    }
     
-    subgraph Outputs
-        RES[Result]
-        NOT[Notification]
-    end
+    FRAUD_REPORT {
+        int id PK
+        string case_reference UK
+        string fraud_upi_id
+        float amount_lost
+        text description
+        string reported_by
+        datetime created_at
+    }
     
-    TX --> API
-    FR --> API
-    API --> RE
-    RE --> SE
-    RE --> ML
-    SE --> BL
-    RE --> DB
-    RE --> R
-    RE --> RES
-    RES --> NOT
+    FRAUD_BLACKLIST {
+        string upi_id PK
+        string added_by
+        string reason
+        datetime created_at
+    }
+                </div>
             </div>
         </div>
     </div>
     
     <div class="section">
-        <h2>8. Deployment Diagram</h2>
+        <h2>7. Deployment Diagram</h2>
         <div class="diagram-container">
             <div class="mermaid">
 flowchart LR
-    subgraph Cloud
-        I[Internet]
+    subgraph Client["Client Browser"]
+        R1["React Dashboard<br/>(Vite :5173)"]
+        R2["Admin View"]
+        R3["User Safety View"]
     end
     
-    subgraph Client
-        D[React Dashboard]
+    subgraph Backend["Backend Server"]
+        F["FastAPI<br/>(:8000)"]
+        S["Safety Rule Engine"]
+        L["LightGBM<br/>(paysim_model.pkl<br/>0.58MB)"]
+        Lu["LSTM<br/>(lstm_model.pth)"]
+        G["Level3 GNN+NLP<br/>(NetworkX)"]
+        B["Behavioral Engine"]
     end
     
-    subgraph API_Server
-        API[FastAPI]
-        RE[Risk Engine]
-        WS[WebSocket]
+    subgraph DB["Database Layer"]
+        P["PostgreSQL 17<br/>(upi-secure-pay)"]
     end
     
-    subgraph ML_Server
-        LGBM[LightGBM]
+    subgraph Train["Training Data"]
+        PS["PaySim<br/>6.3M transactions"]
+        IE["IEEE-CIS<br/>590K"]
+        SYN["50K LSTM sequences"]
     end
     
-    subgraph Database
-        PG[(PostgreSQL)]
-        R[(Redis)]
+    subgraph Docs["Documentation"]
+        GH["GitHub Pages<br/>UML Diagrams"]
     end
     
-    D --> I
-    I --> API
-    API --> RE
-    API --> WS
-    API --> LGBM
-    API --> PG
-    API --> R
+    R1 --> R2
+    R1 --> R3
+    R2 -->|HTTP/WebSocket| F
+    R3 -->|HTTP/WebSocket| F
+    F --> S
+    F --> L
+    F --> Lu
+    F --> G
+    F --> B
+    F --> P
+    PS --> L
+    SYN --> Lu
+    GH -->|"Online Access"| F
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>8. API Endpoints Summary</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+flowchart TB
+    subgraph REST["REST Endpoints"]
+        E1["GET / - Root"]
+        E2["POST /analyze-transaction"]
+        E3["GET /dashboard-stats"]
+        E4["GET /transactions"]
+        E5["POST /report-fraud"]
+        E6["GET /fraud-network"]
+        E7["GET /user-profile/{user_id}"]
+        E8["GET /mule-accounts"]
+        E9["GET /fraud-reports"]
+        E10["GET /health"]
+    end
+    
+    subgraph WS["WebSocket"]
+        W1["WS /ws/live-feed"]
+    end
+    
+    E1 -.-> E2
+    E2 -.-> E3
+    E2 -.-> E5
+    E3 -.-> E4
+    E6 -.-> E7
+    E8 -.-> E6
+    E9 -.-> E5
+    E10 -.-> E1
             </div>
         </div>
     </div>

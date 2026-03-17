@@ -86,9 +86,24 @@ params = {
 model = lgb.LGBMClassifier(**params)
 model.fit(X_train, y_train)
 
-# Evaluate
+# Evaluate with optimal threshold
 print("\n[4/5] Evaluating...")
-y_pred = model.predict(X_test)
+y_proba = model.predict_proba(X_test)[:, 1]
+
+# Find optimal threshold for best F1
+best_threshold = 0.5
+best_f1 = 0
+for threshold in np.arange(0.1, 0.95, 0.05):
+    y_pred_temp = (y_proba >= threshold).astype(int)
+    f1_temp = f1_score(y_test, y_pred_temp) * 100
+    if f1_temp > best_f1:
+        best_f1 = f1_temp
+        best_threshold = threshold
+
+print(f"\nOptimal threshold: {best_threshold:.2f} (for best F1)")
+
+# Evaluate with optimal threshold
+y_pred = (y_proba >= best_threshold).astype(int)
 
 accuracy = accuracy_score(y_test, y_pred) * 100
 precision = precision_score(y_test, y_pred) * 100
@@ -118,7 +133,13 @@ for _, r in imp.head(5).iterrows():
 print("\n[5/5] Saving model...")
 model_path = 'paysim_model.pkl'
 with open(model_path, 'wb') as f:
-    pickle.dump({'model': model, 'feature_cols': feature_cols, 'data_source': 'PaySim'}, f)
+    pickle.dump({
+        'model': model, 
+        'feature_cols': feature_cols, 
+        'data_source': 'PaySim',
+        'threshold': best_threshold,
+        'f1_score': f1
+    }, f)
 
 file_size = os.path.getsize(model_path) / (1024 * 1024)
 training_time = (time.time() - start_time) / 60

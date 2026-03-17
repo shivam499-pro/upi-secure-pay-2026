@@ -293,6 +293,105 @@ body {
 /* Analyzer Form */
 .analyzer-card { flex: 1; }
 
+/* Behavioral Biometrics Monitor */
+.behavioral-monitor {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 20px;
+  border: 1px solid #333;
+}
+
+.behavioral-monitor h3 {
+  color: #f5a623;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.behavioral-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.behavioral-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #252525;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.behavioral-icon {
+  font-size: 1rem;
+}
+
+.behavioral-label {
+  color: #888;
+}
+
+.behavioral-value {
+  color: #fff;
+  font-weight: 600;
+}
+
+.behavioral-score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.score-bar-container {
+  flex: 1;
+  min-width: 150px;
+  height: 12px;
+  background: #252525;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.score-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.score-bar.normal {
+  background: linear-gradient(90deg, #00ff88, #00cc6a);
+}
+
+.score-bar.warning {
+  background: linear-gradient(90deg, #ffaa00, #ff8800);
+}
+
+.score-bar.suspicious {
+  background: linear-gradient(90deg, #ff4444, #ff0000);
+}
+
+.score-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.score-text.normal {
+  color: #00ff88;
+}
+
+.score-text.warning {
+  color: #ffaa00;
+}
+
+.score-text.suspicious {
+  color: #ff4444;
+}
+
 .analyzer-form {
   display: flex;
   flex-direction: column;
@@ -736,10 +835,9 @@ body {
   display: flex;  
   background: #1a1a1a;  
   border-bottom: 2px solid #f5a623;  
-  padding: 0 20px;  
-}  
-ECHO is on.
-.tab-button {  
+  padding: 0 20px;
+}
+.tab-button {
   padding: 16px 24px;  
   background: transparent;  
   border: none;  
@@ -749,15 +847,14 @@ ECHO is on.
   cursor: pointer;  
   transition: all 0.3s;  
   border-bottom: 3px solid transparent;  
-  margin-bottom: -2px;  
-}  
-ECHO is on.
-.tab-button:hover {  
+  margin-bottom: -2px;
+}
+.tab-button:hover {
   background: rgba(245, 166, 35, 0.1);  
 }  
-ECHO is on.
-.tab-button.active {  
-  background: #f5a623;  
-  color: #000;  
-  border-bottom-color: #f5a623;  
-} 
+.tab-button.active {
+  background: #f5a623;
+  color: #000;
+  border-bottom-color: #f5a623;
+}
+ 

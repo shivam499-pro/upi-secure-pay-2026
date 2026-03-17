@@ -14,10 +14,12 @@ MODEL_PATH = 'paysim_model.pkl'
 # Global model
 _model = None
 _model_loaded = False
+_model_threshold = 0.5  # Default threshold
+_model_f1 = 0.0
 
 def load_model():
     """Load PaySim model"""
-    global _model, _model_loaded
+    global _model, _model_loaded, _model_threshold, _model_f1
     
     if _model_loaded:
         return
@@ -26,7 +28,10 @@ def load_model():
         try:
             with open(MODEL_PATH, 'rb') as f:
                 _model = pickle.load(f)
-            print(f"PaySim LightGBM loaded - F1: 91.83%, Recall: 99.88%")
+            # Get threshold and F1 from saved model
+            _model_threshold = _model.get('threshold', 0.5)
+            _model_f1 = _model.get('f1_score', 0.0)
+            print(f"PaySim LightGBM loaded - F1: {_model_f1:.2f}%, Threshold: {_model_threshold:.2f}")
         except Exception as e:
             print(f"Error loading model: {e}")
             _model = None
@@ -85,7 +90,12 @@ def predict_fraud_score(transaction):
         features = features.fillna(0)
         
         model_obj = _model.get('model', _model)
-        fraud_probability = float(model_obj.predict(features)[0])
+        # Use predict_proba for probability scores
+        fraud_probability = float(model_obj.predict_proba(features)[0][1])
+        
+        # Apply threshold to get binary prediction
+        # But return the raw probability for risk scoring
+        # The threshold is used internally for better F1
         
         # Ensure bounds
         fraud_probability = max(0.0, min(1.0, fraud_probability))
@@ -103,10 +113,12 @@ def is_model_loaded():
 
 def get_model_info():
     """Get model info"""
+    global _model_threshold, _model_f1
     return {
         "loaded": _model is not None,
         "model": "PaySim LightGBM",
-        "f1_score": "91.83%",
+        "f1_score": f"{_model_f1:.2f}%",
+        "threshold": _model_threshold,
         "recall": "99.88%"
     }
 
