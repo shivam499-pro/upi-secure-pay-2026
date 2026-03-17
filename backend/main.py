@@ -10,6 +10,7 @@ from risk_engine import RiskEngine
 from fraud_report import FraudReport, fraud_report_manager
 from network_graph import fraud_network
 from user_profile import UserProfile, user_profile_manager
+from level2_lstm import predict_sequence_risk
 import database
 
 app = FastAPI(title="UPI Secure Pay API", version="1.0.0")
@@ -110,11 +111,34 @@ async def analyze_transaction(transaction: TransactionInput):
     """
     Analyze a transaction for fraud risk.
     Returns risk score, level, and blocking decision.
-    Includes behavioral deviation and network risk scoring.
+    Includes Safety Engine, LightGBM, LSTM Sequence, behavioral deviation and network risk scoring.
     """
     try:
         # Get user ID (using a default if not provided)
         user_id = "user@upi"  # In production, get from auth
+        
+        # Get user's recent transactions for LSTM sequence analysis
+        user_profile = user_profile_manager.get_or_create_profile(user_id)
+        user_transactions = user_profile.recent_transactions if hasattr(user_profile, 'recent_transactions') else []
+        
+        # Convert current transaction to dict format for LSTM
+        current_txn = {
+            'amount': transaction.amount,
+            'hour_of_day': transaction.hour_of_day,
+            'is_new_merchant': transaction.is_new_merchant,
+            'is_new_device': transaction.is_new_device,
+            'velocity_last_1hr': transaction.velocity_last_1hr,
+            'amount_ratio': transaction.amount / user_profile.avg_amount if user_profile.avg_amount > 0 else 1.0,
+            'swipe_confidence': transaction.swipe_confidence
+        }
+        
+        # Get LSTM sequence risk score (Level 2)
+        lstm_sequence_score = 0.0
+        lstm_anomaly_reason = None
+        if len(user_transactions) >= 3:
+            lstm_sequence_score, lstm_anomaly_reason = predict_sequence_risk(
+                user_transactions, current_txn
+            )
         
         # Calculate behavioral deviation
         behavioral_deviation = user_profile_manager.get_behavioral_deviation(
@@ -127,12 +151,27 @@ async def analyze_transaction(transaction: TransactionInput):
         # Get network risk score
         network_risk_score = fraud_network.get_network_risk_score(transaction.merchant_upi_id)
         
-        # Analyze with enhanced scoring
+        # Analyze with enhanced scoring (includes LSTM)
         result = risk_engine.analyze_transaction_enhanced(
             transaction=transaction,
+            lstm_sequence_score=lstm_sequence_score,
             behavioral_deviation_score=behavioral_deviation.deviation_score,
             network_risk_score=network_risk_score
         )
+        
+        # Add LSTM anomaly reason to risk factors if high
+        if lstm_sequence_score > 0.5 and lstm_anomaly_reason:
+            from schemas import RiskFactor
+            result.risk_factors.append(RiskFactor(
+                name="LSTM Sequence Anomaly",
+                description=lstm_anomaly_reason,
+                severity="high",
+                weight=25.0 * lstm_sequence_score
+            ))
+        
+        # Add Level 2 LSTM fields to result
+        result.sequence_risk_score = lstm_sequence_score
+        result.level2_active = len(user_transactions) >= 3
         
         # Update user profile with this transaction
         user_profile_manager.update_user_profile(

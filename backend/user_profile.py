@@ -13,6 +13,7 @@ class UserProfile(BaseModel):
     usual_merchants: List[str] = Field(default_factory=list, description="Frequently used merchants")
     transaction_count: int = Field(default=0, description="Total transaction count")
     risk_score_history: List[float] = Field(default_factory=list, description="History of risk scores")
+    recent_transactions: List[Dict] = Field(default_factory=list, description="Recent transactions for LSTM")
     last_updated: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -77,6 +78,21 @@ class UserProfileManager:
         profile.risk_score_history.append(risk_score)
         if len(profile.risk_score_history) > 100:
             profile.risk_score_history.pop(0)
+        
+        # Update recent transactions for LSTM sequence analysis
+        recent_txn = {
+            'amount': amount,
+            'hour_of_day': hour_of_day,
+            'merchant_upi': merchant_upi,
+            'is_new_merchant': merchant_upi not in profile.usual_merchants,
+            'is_new_device': False,  # Not tracked in profile
+            'velocity_last_1hr': 0,  # Not tracked in profile
+            'amount_ratio': amount / profile.avg_amount if profile.avg_amount > 0 else 1.0,
+            'swipe_confidence': 0.8  # Default
+        }
+        profile.recent_transactions.append(recent_txn)
+        if len(profile.recent_transactions) > 50:
+            profile.recent_transactions.pop(0)
         
         # Update last timestamp
         profile.last_updated = datetime.now().isoformat()

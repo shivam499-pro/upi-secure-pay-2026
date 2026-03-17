@@ -42,6 +42,8 @@ class TransactionResult(BaseModel):
     risk_factors: List[RiskFactor]
     timestamp: str
     status: str  # approved, blocked, alerted
+    sequence_risk_score: Optional[float] = None  # Level 2 LSTM score
+    level2_active: Optional[bool] = False  # Is Level 2 LSTM active
 
 
 class DashboardStats(BaseModel):

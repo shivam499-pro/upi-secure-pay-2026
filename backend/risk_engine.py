@@ -21,8 +21,10 @@ class RiskEngine:
         self.BLOCK_THRESHOLD = 75.0
         self.ALERT_THRESHOLD = 50.0
         # Score weights for combined scoring
-        self.SAFETY_ENGINE_WEIGHT = 0.40
+        # Updated: Safety: 35%, LightGBM: 30%, LSTM Sequence: 25%, Network: 10%
+        self.SAFETY_ENGINE_WEIGHT = 0.35
         self.ML_MODEL_WEIGHT = 0.30
+        self.LSTM_SEQUENCE_WEIGHT = 0.25
         self.BEHAVIORAL_WEIGHT = 0.20
         self.NETWORK_WEIGHT = 0.10
     
@@ -121,14 +123,16 @@ class RiskEngine:
     def calculate_combined_risk_score(
         self, 
         safety_score: float, 
-        ml_score: float, 
+        ml_score: float,
+        lstm_sequence_score: float = 0.0,
         behavioral_deviation_score: float = 0.0, 
         network_risk_score: float = 0.0
     ) -> float:
         """
         Calculate combined risk score with weights:
-        - Safety Engine: 40%
+        - Safety Engine: 35%
         - LightGBM score: 30%
+        - LSTM Sequence: 25%
         - Behavioral deviation: 20%
         - Network graph score: 10%
         
@@ -136,16 +140,18 @@ class RiskEngine:
         """
         weighted_safety = safety_score * self.SAFETY_ENGINE_WEIGHT
         weighted_ml = ml_score * self.ML_MODEL_WEIGHT
+        weighted_lstm = lstm_sequence_score * 100 * self.LSTM_SEQUENCE_WEIGHT  # Convert 0-1 to 0-100
         weighted_behavioral = behavioral_deviation_score * 100 * self.BEHAVIORAL_WEIGHT  # Convert 0-1 to 0-100
         weighted_network = network_risk_score * self.NETWORK_WEIGHT
         
-        combined_score = weighted_safety + weighted_ml + weighted_behavioral + weighted_network
+        combined_score = weighted_safety + weighted_ml + weighted_lstm + weighted_behavioral + weighted_network
         
         return {
             "combined_score": round(min(combined_score, self.MAX_RISK_SCORE), 2),
             "breakdown": {
                 "safety_engine": round(weighted_safety, 2),
                 "ml_model": round(weighted_ml, 2),
+                "lstm_sequence": round(weighted_lstm, 2),
                 "behavioral_deviation": round(weighted_behavioral, 2),
                 "network_graph": round(weighted_network, 2)
             }
@@ -239,11 +245,12 @@ class RiskEngine:
     def analyze_transaction_enhanced(
         self, 
         transaction: TransactionInput,
+        lstm_sequence_score: float = 0.0,
         behavioral_deviation_score: float = 0.0,
         network_risk_score: float = 0.0
     ) -> TransactionResult:
         """
-        Enhanced transaction analysis with behavioral and network scores.
+        Enhanced transaction analysis with LSTM sequence, behavioral and network scores.
         This method includes all contributing scores in the response.
         """
         # Get timestamp
@@ -262,6 +269,7 @@ class RiskEngine:
         combined_result = self.calculate_combined_risk_score(
             safety_score=safety_score,
             ml_score=ml_score,
+            lstm_sequence_score=lstm_sequence_score,
             behavioral_deviation_score=behavioral_deviation_score,
             network_risk_score=network_risk_score
         )
