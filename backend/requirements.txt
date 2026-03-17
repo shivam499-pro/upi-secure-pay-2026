@@ -8,3 +8,5 @@ numpy
 websockets
 python-dotenv
 joblib
+sqlalchemy
+psycopg2-binary

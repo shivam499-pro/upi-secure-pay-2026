@@ -10,6 +10,7 @@ from risk_engine import RiskEngine
 from fraud_report import FraudReport, fraud_report_manager
 from network_graph import fraud_network
 from user_profile import UserProfile, user_profile_manager
+import database
 
 app = FastAPI(title="UPI Secure Pay API", version="1.0.0")
 
@@ -27,6 +28,11 @@ risk_engine = RiskEngine()
 
 # In-memory storage for transactions
 transactions_store: List[TransactionResult] = []
+
+# Database connection
+db_session = None
+db_engine = None
+db_initialized = False
 
 # WebSocket connections
 active_connections: List[WebSocket] = []
@@ -153,6 +159,33 @@ async def analyze_transaction(transaction: TransactionInput):
         if len(transactions_store) > 100:
             transactions_store.pop()
         
+        # Save to database if available
+        global db_session, db_initialized
+        if db_initialized and db_session:
+            try:
+                # Get reasons from risk_factors or message
+                reasons_str = result.message if result.message else ""
+                if hasattr(result, 'risk_factors') and result.risk_factors:
+                    reasons_list = [str(r) for r in result.risk_factors[:3]]
+                    reasons_str = ", ".join(reasons_list)
+                
+                txn_data = {
+                    "transaction_id": result.transaction_id,
+                    "amount": result.amount,
+                    "merchant_name": transaction.merchant_name,
+                    "merchant_upi_id": transaction.merchant_upi_id,
+                    "decision": "BLOCK" if result.is_blocked else ("ALERT" if result.is_alert else "APPROVE"),
+                    "risk_score": result.risk_score,
+                    "reasons": reasons_str,
+                    "level_reached": result.risk_level,
+                    "latency_ms": 0.0,
+                    "behavioral_deviation": behavioral_deviation.deviation_score,
+                    "network_risk_score": network_risk_score
+                }
+                database.save_transaction(db_session, txn_data)
+            except Exception as e:
+                print(f"Error saving to DB: {e}")
+        
         # Broadcast to all WebSocket clients
         await broadcast_transaction(result)
         
@@ -166,8 +199,62 @@ async def get_dashboard_stats():
     """
     Get dashboard statistics including totals and recent transactions.
     """
+    global db_session, db_initialized, transactions_store
+    
+    # Try to get from database first
+    if db_initialized and db_session:
+        try:
+            db_stats = database.get_dashboard_stats(db_session)
+            if db_stats:
+                # Get recent from database
+                recent_txns = database.get_all_transactions(db_session, limit=10)
+                recent = []
+                for t in recent_txns:
+                    # Create RiskFactor objects
+                    from schemas import RiskFactor
+                    risk_factors = []
+                    if t.get("reasons"):
+                        for reason in t.get("reasons", "").split(", ")[:3]:
+                            if reason:
+                                risk_factors.append(RiskFactor(
+                                    name=reason[:50],
+                                    description=reason,
+                                    severity="medium",
+                                    weight=10.0
+                                ))
+                    
+                    recent.append(TransactionResult(
+                        transaction_id=t["transaction_id"],
+                        sender_upi=t.get("merchant_upi_id", ""),
+                        receiver_upi=t.get("merchant_upi_id", ""),
+                        amount=t["amount"],
+                        risk_score=t["risk_score"],
+                        risk_level=t.get("level_reached", "low"),
+                        is_blocked=t["decision"] == "BLOCK",
+                        is_alert=t["decision"] == "ALERT",
+                        message=t.get("reasons", ""),
+                        risk_factors=risk_factors,
+                        timestamp=t.get("created_at", ""),
+                        status="blocked" if t["decision"] == "BLOCK" else ("alerted" if t["decision"] == "ALERT" else "approved")
+                    ))
+                
+                avg_risk = 0
+                if db_stats["total"] > 0 and recent:
+                    avg_risk = sum(t.risk_score or 0 for t in recent) / len(recent)
+                
+                return DashboardStats(
+                    total_transactions=db_stats["total"],
+                    blocked_transactions=db_stats["blocked"],
+                    alerted_transactions=db_stats["alerted"],
+                    approved_transactions=db_stats["approved"],
+                    average_risk_score=round(avg_risk, 2),
+                    recent_transactions=recent
+                )
+        except Exception as e:
+            print(f"DB stats error: {e}")
+    
+    # Fallback to in-memory
     if not transactions_store:
-        # Generate some sample data if no transactions yet
         for _ in range(5):
             sample = generate_sample_transaction()
             result = risk_engine.analyze_transaction(sample)
@@ -195,6 +282,46 @@ async def get_transactions(limit: int = 20):
     """
     Get recent transactions.
     """
+    global db_session, db_initialized, transactions_store
+    
+    # Try database first
+    if db_initialized and db_session:
+        try:
+            txns = database.get_all_transactions(db_session, limit=limit)
+            if txns:
+                results = []
+                from schemas import RiskFactor
+                for t in txns:
+                    risk_factors = []
+                    if t.get("reasons"):
+                        for reason in t.get("reasons", "").split(", ")[:3]:
+                            if reason:
+                                risk_factors.append(RiskFactor(
+                                    name=reason[:50],
+                                    description=reason,
+                                    severity="medium",
+                                    weight=10.0
+                                ))
+                    
+                    results.append(TransactionResult(
+                        transaction_id=t["transaction_id"],
+                        sender_upi=t.get("merchant_upi_id", ""),
+                        receiver_upi=t.get("merchant_upi_id", ""),
+                        amount=t["amount"],
+                        risk_score=t["risk_score"],
+                        risk_level=t.get("level_reached", "low"),
+                        is_blocked=t["decision"] == "BLOCK",
+                        is_alert=t["decision"] == "ALERT",
+                        message=t.get("reasons", ""),
+                        risk_factors=risk_factors,
+                        timestamp=t.get("created_at", ""),
+                        status="blocked" if t["decision"] == "BLOCK" else ("alerted" if t["decision"] == "ALERT" else "approved")
+                    ))
+                return results
+        except Exception as e:
+            print(f"DB fetch error: {e}")
+    
+    # Fallback to in-memory
     return transactions_store[:limit]
 
 
@@ -267,7 +394,13 @@ async def broadcast_transaction(transaction: TransactionResult):
 # Generate initial sample data on startup
 @app.on_event("startup")
 async def startup_event():
-    """Generate initial sample data"""
+    """Initialize database and generate sample data"""
+    global db_session, db_engine, db_initialized
+    
+    # Initialize database
+    db_initialized, db_engine, db_session = database.init_db()
+    
+    # Generate initial sample data
     for _ in range(10):
         sample = generate_sample_transaction()
         # Occasionally add high risk factors
@@ -276,6 +409,31 @@ async def startup_event():
             sample.is_on_call = True
         result = risk_engine.analyze_transaction(sample)
         transactions_store.append(result)
+        
+        # Save to database if available
+        if db_initialized and db_session:
+            try:
+                reasons_str = result.message if result.message else ""
+                if hasattr(result, 'risk_factors') and result.risk_factors:
+                    reasons_list = [str(r) for r in result.risk_factors[:3]]
+                    reasons_str = ", ".join(reasons_list)
+                
+                txn_data = {
+                    "transaction_id": result.transaction_id,
+                    "amount": result.amount,
+                    "merchant_name": sample.merchant_name,
+                    "merchant_upi_id": sample.merchant_upi_id,
+                    "decision": "BLOCK" if result.is_blocked else ("ALERT" if result.is_alert else "APPROVE"),
+                    "risk_score": result.risk_score,
+                    "reasons": reasons_str,
+                    "level_reached": result.risk_level,
+                    "latency_ms": 0.0,
+                    "behavioral_deviation": None,
+                    "network_risk_score": None
+                }
+                database.save_transaction(db_session, txn_data)
+            except Exception as e:
+                print(f"Startup DB save error: {e}")
 
 
 # ========== NEW ENDPOINTS ==========
@@ -287,7 +445,24 @@ async def report_fraud(report: FraudReport):
     Report a fraudulent transaction.
     Adds fraud UPI to blacklist and returns case reference.
     """
+    global db_session, db_initialized
+    
     result = fraud_report_manager.process_fraud_report(report)
+    
+    # Save to database if available
+    if db_initialized and db_session:
+        try:
+            report_data = {
+                "case_reference": result.case_reference,
+                "fraud_upi_id": report.fraud_upi_id,
+                "amount_lost": report.amount,
+                "description": report.description,
+                "reported_by": report.reported_by
+            }
+            database.save_fraud_report(db_session, report_data)
+        except Exception as e:
+            print(f"Error saving fraud report to DB: {e}")
+    
     return {
         "success": True,
         "case_reference": result.case_reference,
