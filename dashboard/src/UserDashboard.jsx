@@ -17,7 +17,8 @@ function UserDashboard() {
     fraud_upi_id: '',
     amount: 0,
     description: '',
-    reported_by: 'user'
+    reported_by: 'user',
+    user_email: ''
   });
   const [expandedReasons, setExpandedReasons] = useState({});
 
@@ -95,7 +96,8 @@ function UserDashboard() {
         fraud_upi_id: '',
         amount: 0,
         description: '',
-        reported_by: 'user'
+        reported_by: 'user',
+        user_email: ''
       });
     } catch (err) {
       alert('Error submitting report. Please try again.');
@@ -342,6 +344,13 @@ function UserDashboard() {
               value={fraudForm.description}
               onChange={(e) => setFraudForm({...fraudForm, description: e.target.value})}
               className="modal-textarea"
+            />
+            <input
+              type="email"
+              placeholder="Your Email (for confirmation)"
+              value={fraudForm.user_email}
+              onChange={(e) => setFraudForm({...fraudForm, user_email: e.target.value})}
+              className="modal-input"
             />
             <div className="modal-buttons">
               <button onClick={() => setShowFraudModal(false)} className="cancel-button">Cancel</button>

@@ -37,7 +37,8 @@ function App() {
     fraud_upi_id: '',
     amount: '',
     description: '',
-    reported_by: ''
+    reported_by: '',
+    user_email: ''
   });
   const [fraudReportResult, setFraudReportResult] = useState(null);
   
@@ -356,7 +357,8 @@ function App() {
         fraud_upi_id: fraudReport.fraud_upi_id,
         amount: parseFloat(fraudReport.amount) || 0,
         description: fraudReport.description,
-        reported_by: fraudReport.reported_by || "user"
+        reported_by: fraudReport.reported_by || "user",
+        user_email: fraudReport.user_email
       };
       
       const response = await axios.post(`${API_BASE}/report-fraud`, payload);
@@ -392,9 +394,11 @@ function App() {
   // Get node color for network
   const getNodeColor = (type) => {
     switch (type) {
-      case 'mule': return '#ff4444';
-      case 'suspicious': return '#ffaa00';
-      default: return '#00ff88';
+      case 'blocked': return '#ff4444';  // Red for blocked transactions
+      case 'alerted': return '#ffaa00';  // Orange for alerted transactions
+      case 'mule': return '#ff4444';    // Red for mule accounts
+      case 'suspicious': return '#ffaa00'; // Orange for suspicious
+      default: return '#00ff88';         // Green for normal/approved
     }
   };
 
@@ -479,17 +483,17 @@ function App() {
         </div>
         <div className="network-content">
           <div className="network-graph">
-            <svg width="100%" height="300">
+            <svg width="100%" height={Math.max(300, (Math.ceil((networkData.nodes?.length || 0) / 8) * 80) + 50)}>
               {networkData.nodes?.map((node, i) => (
                 <g key={i}>
                   <circle
                     cx={50 + (i * 80) % 600}
                     cy={50 + Math.floor(i / 8) * 80}
-                    r={node.type === 'mule' ? 20 : node.type === 'suspicious' ? 15 : 10}
+                    r={node.type === 'blocked' ? 22 : node.type === 'mule' ? 20 : node.type === 'alerted' || node.type === 'suspicious' ? 15 : 10}
                     fill={getNodeColor(node.type)}
-                    className={node.type === 'mule' ? 'pulsing-node' : ''}
+                    className={node.type === 'blocked' || node.type === 'mule' ? 'pulsing-node' : ''}
                   >
-                    <title>{node.id}</title>
+                    <title>{node.id} - {node.type} ({node.worst_status || 'normal'})</title>
                   </circle>
                   <text
                     x={50 + (i * 80) % 600}
@@ -519,9 +523,9 @@ function App() {
               })}
             </svg>
             <div className="network-legend">
-              <span className="legend-item"><span className="dot normal"></span> Normal</span>
-              <span className="legend-item"><span className="dot suspicious"></span> Suspicious</span>
-              <span className="legend-item"><span className="dot mule"></span> Mule</span>
+              <span className="legend-item"><span className="dot normal"></span> Normal/Approved</span>
+              <span className="legend-item"><span className="dot suspicious"></span> Alerted</span>
+              <span className="legend-item"><span className="dot mule"></span> Blocked</span>
             </div>
           </div>
           <div className="mule-accounts-panel">
@@ -863,6 +867,15 @@ function App() {
                     value={fraudReport.reported_by}
                     onChange={(e) => setFraudReport({...fraudReport, reported_by: e.target.value})}
                     placeholder="your@upi"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Your Email (for confirmation)</label>
+                  <input
+                    type="email"
+                    value={fraudReport.user_email}
+                    onChange={(e) => setFraudReport({...fraudReport, user_email: e.target.value})}
+                    placeholder="your@email.com"
                   />
                 </div>
                 <button type="submit" className="submit-fraud-btn">SUBMIT REPORT</button>

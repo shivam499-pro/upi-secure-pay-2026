@@ -7,19 +7,21 @@ class Node:
     """Represents a node in the fraud network graph"""
     def __init__(self, upi_id: str, node_type: str = "normal"):
         self.id = upi_id
-        self.type = node_type  # normal, suspicious, mule
+        self.type = node_type  # normal, suspicious, mule, blocked, alerted
         self.transaction_count = 0
         self.total_amount = 0.0
         self.senders: Set[str] = set()
         self.receivers: Set[str] = set()
         self.transactions: List[Dict] = []
+        self.worst_status = "approved"  # Track worst status: approved < alerted < blocked
     
     def to_dict(self) -> Dict:
         return {
             "id": self.id,
             "type": self.type,
             "transaction_count": self.transaction_count,
-            "total_amount": self.total_amount
+            "total_amount": self.total_amount,
+            "worst_status": self.worst_status
         }
 
 
@@ -53,9 +55,11 @@ class FraudNetworkGraph:
         self.edges: List[Edge] = []
     
     def add_transaction_to_graph(self, sender_upi: str, receiver_upi: str, 
-                                  amount: float, timestamp: str, transaction_id: str):
+                                  amount: float, timestamp: str, transaction_id: str,
+                                  status: str = "approved"):
         """
         Add sender and receiver as nodes, and transaction as an edge.
+        Status: 'approved', 'alerted', or 'blocked'
         """
         # Create or update sender node
         if sender_upi not in self.nodes:
@@ -66,6 +70,12 @@ class FraudNetworkGraph:
         sender_node.total_amount += amount
         sender_node.receivers.add(receiver_upi)
         
+        # Update worst status for sender
+        if status == "blocked":
+            sender_node.worst_status = "blocked"
+        elif status == "alerted" and sender_node.worst_status != "blocked":
+            sender_node.worst_status = "alerted"
+        
         # Create or update receiver node
         if receiver_upi not in self.nodes:
             self.nodes[receiver_upi] = Node(receiver_upi, "normal")
@@ -75,6 +85,12 @@ class FraudNetworkGraph:
         receiver_node.total_amount += amount
         receiver_node.senders.add(sender_upi)
         
+        # Update worst status for receiver
+        if status == "blocked":
+            receiver_node.worst_status = "blocked"
+        elif status == "alerted" and receiver_node.worst_status != "blocked":
+            receiver_node.worst_status = "alerted"
+        
         # Add edge
         edge = Edge(sender_upi, receiver_upi, amount, timestamp, transaction_id)
         self.edges.append(edge)
@@ -83,10 +99,15 @@ class FraudNetworkGraph:
         self._update_node_types()
     
     def _update_node_types(self):
-        """Update node types based on network behavior"""
+        """Update node types based on network behavior and transaction status"""
         for node_id, node in self.nodes.items():
-            # Check for mule accounts (receiving from 3+ different senders)
-            if len(node.senders) >= 3:
+            # First priority: worst_status overrides behavior-based type
+            if node.worst_status == "blocked":
+                node.type = "blocked"
+            elif node.worst_status == "alerted":
+                node.type = "alerted"
+            # Then check for mule accounts (receiving from 3+ different senders)
+            elif len(node.senders) >= 3:
                 node.type = "mule"
             # Check for suspicious accounts
             elif node.transaction_count > 20 or node.total_amount > 1000000:

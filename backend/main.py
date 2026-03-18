@@ -219,7 +219,8 @@ async def analyze_transaction(transaction: TransactionInput):
             receiver_upi=transaction.merchant_upi_id,
             amount=transaction.amount,
             timestamp=result.timestamp,
-            transaction_id=result.transaction_id
+            transaction_id=result.transaction_id,
+            status=result.status
         )
         
         # Add transaction to Level 3 graph
