@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPI Secure Pay - UML Diagrams</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#1a1a1a',
+                primaryColor: '#f5a623',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#f5a623',
+                lineColor: '#f5a623',
+                secondaryColor: '#2196F3',
+                tertiaryColor: '#4CAF50',
+                mainBkg: '#1a1a1a',
+                nodeBorder: '#f5a623',
+                clusterBkg: '#252525',
+                clusterBorder: '#444',
+                titleColor: '#f5a623',
+                edgeLabelBackground: '#1a1a1a'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 15
+            },
+            sequence: {
+                actorMargin: 50,
+                boxMargin: 10
+            }
+        });
+    </script>
     <style>
         * {
             margin: 0;
@@ -56,6 +86,106 @@
         
         .mermaid {
             font-size: 14px;
+        }
+        
+        /* Mermaid diagram colored styling */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node polygon {
+            stroke-width: 2px;
+        }
+        
+        .mermaid .edgePath path {
+            stroke: #f5a623;
+            stroke-width: 2px;
+        }
+        
+        .mermaid .marker {
+            fill: #f5a623;
+            stroke: #f5a623;
+        }
+        
+        /* Class diagram colors */
+        .mermaid.classDiagram .classBox {
+            fill: #1e3a5f;
+            stroke: #2196F3;
+            stroke-width: 2px;
+        }
+        
+        .mermaid.classDiagram .classLabel {
+            fill: #fff;
+            stroke: none;
+        }
+        
+        .mermaid.classDiagram .relation {
+            stroke: #f5a623;
+            stroke-width: 1.5px;
+        }
+        
+        /* Sequence diagram colors */
+        .mermaid.sequenceDiagram .actor {
+            fill: #1e3a5f;
+            stroke: #2196F3;
+        }
+        
+        .mermaid.sequenceDiagram .actorLine {
+            stroke: #f5a623;
+        }
+        
+        .mermaid.sequenceDiagram .messageLine0,
+        .mermaid.sequenceDiagram .messageLine1 {
+            stroke: #f5a623;
+        }
+        
+        .mermaid.sequenceDiagram .messageText {
+            fill: #fff;
+        }
+        
+        .mermaid.sequenceDiagram .activationBox {
+            fill: #f5a623;
+            stroke: #f5a623;
+        }
+        
+        .mermaid.sequenceDiagram .note {
+            fill: #2d2d2d;
+            stroke: #f5a623;
+        }
+        
+        /* State diagram colors */
+        .mermaid.stateDiagram-v2 .state {
+            fill: #1e3a5f;
+            stroke: #2196F3;
+        }
+        
+        .mermaid.stateDiagram-v2 .transition {
+            stroke: #f5a623;
+        }
+        
+        .mermaid.stateDiagram-v2 .start_state {
+            fill: #4CAF50;
+            stroke: #4CAF50;
+        }
+        
+        .mermaid.stateDiagram-v2 .end_state {
+            fill: #f44336;
+            stroke: #f44336;
+        }
+        
+        /* ER diagram colors */
+        .mermaid.er .entityBox {
+            fill: #1e3a5f;
+            stroke: #9C27B0;
+            stroke-width: 2px;
+        }
+        
+        .mermaid.er .attributeBox {
+            fill: #2d2d2d;
+            stroke: #f5a623;
+        }
+        
+        .mermaid.er .relationshipLine {
+            stroke: #f5a623;
+            stroke-width: 2px;
         }
         
         .grid-2 {
@@ -202,6 +332,18 @@ classDiagram
     UserProfile --> RiskEngine
     FraudReport --> FraudReportManager
     FraudReportManager --> SafetyRuleEngine
+    
+    style TransactionInput fill:#2196F3,stroke:#fff,color:#fff
+    style TransactionResult fill:#4CAF50,stroke:#fff,color:#fff
+    style SafetyRuleEngine fill:#f5a623,stroke:#fff,color:#000
+    style LightGBMModel fill:#9C27B0,stroke:#fff,color:#fff
+    style LSTMSequenceAnalyzer fill:#00BCD4,stroke:#fff,color:#fff
+    style GNNNLPAnalyzer fill:#FF9800,stroke:#fff,color:#fff
+    style RiskEngine fill:#673AB7,stroke:#fff,color:#fff
+    style UserProfile fill:#E91E63,stroke:#fff,color:#fff
+    style BehavioralDeviation fill:#795548,stroke:#fff,color:#fff
+    style FraudReport fill:#f44336,stroke:#fff,color:#fff
+    style FraudReportManager fill:#FF5722,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
@@ -281,6 +423,20 @@ flowchart TB
     Decision --> PG
     Decision --> WS
     WS --> D1
+    
+    style Client fill:#2196F3,stroke:#fff,color:#fff
+    style Gateway fill:#9C27B0,stroke:#fff,color:#fff
+    style Bio fill:#E91E63,stroke:#fff,color:#fff
+    style Safety fill:#f5a623,stroke:#fff,color:#000
+    style ML1 fill:#4CAF50,stroke:#fff,color:#fff
+    style ML2 fill:#00BCD4,stroke:#fff,color:#fff
+    style ML3 fill:#FF9800,stroke:#fff,color:#fff
+    style Risk fill:#673AB7,stroke:#fff,color:#fff
+    style XAI fill:#795548,stroke:#fff,color:#fff
+    style Decision fill:#f44336,stroke:#fff,color:#fff
+    style DB fill:#607D8B,stroke:#fff,color:#fff
+    style D1 fill:#1565C0,stroke:#fff,color:#fff
+    style D2 fill:#1565C0,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
@@ -356,16 +512,20 @@ flowchart TD
     L --> M
     M --> N[Response to User + Dashboard]
     
-    style A fill:#1a1a1a,stroke:#f5a623,color:#fff
+    style A fill:#2196F3,stroke:#fff,color:#fff
     style B fill:#f5a623,stroke:#fff,color:#000
-    style C fill:#ff4444,stroke:#fff,color:#fff
-    style D fill:#f5a623,stroke:#fff,color:#000
-    style E fill:#00ff88,stroke:#fff,color:#000
-    style F fill:#f5a623,stroke:#fff,color:#000
-    style G fill:#f5a623,stroke:#fff,color:#000
-    style J fill:#ff4444,stroke:#fff,color:#fff
-    style K fill:#ffaa00,stroke:#fff,color:#000
-    style L fill:#00ff88,stroke:#fff,color:#000
+    style C fill:#f44336,stroke:#fff,color:#fff
+    style D fill:#9C27B0,stroke:#fff,color:#fff
+    style E fill:#4CAF50,stroke:#fff,color:#fff
+    style F fill:#00BCD4,stroke:#fff,color:#fff
+    style G fill:#FF9800,stroke:#fff,color:#fff
+    style H fill:#673AB7,stroke:#fff,color:#fff
+    style I fill:#E91E63,stroke:#fff,color:#fff
+    style J fill:#f44336,stroke:#fff,color:#fff
+    style K fill:#ff9800,stroke:#fff,color:#000
+    style L fill:#4CAF50,stroke:#fff,color:#fff
+    style M fill:#795548,stroke:#fff,color:#fff
+    style N fill:#607D8B,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
@@ -402,6 +562,19 @@ stateDiagram-v2
     
     LOGGED_TO_DB --> DASHBOARD_UPDATED: WebSocket push
     DASHBOARD_UPDATED --> [*]
+    
+    style RECEIVED fill:#2196F3,stroke:#fff,color:#fff
+    style BEHAVIORAL_ANALYSIS fill:#9C27B0,stroke:#fff,color:#fff
+    style SAFETY_CHECK fill:#f5a623,stroke:#fff,color:#000
+    style LEVEL1_LIGHTGBM fill:#4CAF50,stroke:#fff,color:#fff
+    style LEVEL2_LSTM fill:#00BCD4,stroke:#fff,color:#fff
+    style LEVEL3_GNN_NLP fill:#FF9800,stroke:#fff,color:#fff
+    style RISK_SCORED fill:#673AB7,stroke:#fff,color:#fff
+    style APPROVED fill:#4CAF50,stroke:#fff,color:#fff
+    style ALERTED fill:#ff9800,stroke:#fff,color:#000
+    style BLOCKED fill:#f44336,stroke:#fff,color:#fff
+    style LOGGED_TO_DB fill:#607D8B,stroke:#fff,color:#fff
+    style DASHBOARD_UPDATED fill:#3F51B5,stroke:#fff,color:#fff
                 </div>
             </div>
         </div>
@@ -456,6 +629,11 @@ erDiagram
         string reason
         datetime created_at
     }
+    
+    style TRANSACTION fill:#2196F3,stroke:#fff,color:#fff
+    style USER_PROFILE fill:#9C27B0,stroke:#fff,color:#fff
+    style FRAUD_REPORT fill:#f44336,stroke:#fff,color:#fff
+    style FRAUD_BLACKLIST fill:#ff9800,stroke:#fff,color:#000
                 </div>
             </div>
         </div>
@@ -508,6 +686,26 @@ flowchart LR
     PS --> L
     SYN --> Lu
     GH -->|"Online Access"| F
+    
+    style Client fill:#2196F3,stroke:#fff,color:#fff
+    style R1 fill:#1976D2,stroke:#fff,color:#fff
+    style R2 fill:#1565C0,stroke:#fff,color:#fff
+    style R3 fill:#1565C0,stroke:#fff,color:#fff
+    style Backend fill:#9C27B0,stroke:#fff,color:#fff
+    style F fill:#7B1FA2,stroke:#fff,color:#fff
+    style S fill:#f5a623,stroke:#fff,color:#000
+    style L fill:#4CAF50,stroke:#fff,color:#fff
+    style Lu fill:#00BCD4,stroke:#fff,color:#fff
+    style G fill:#FF9800,stroke:#fff,color:#fff
+    style B fill:#673AB7,stroke:#fff,color:#fff
+    style DB fill:#607D8B,stroke:#fff,color:#fff
+    style P fill:#455A64,stroke:#fff,color:#fff
+    style Train fill:#FF5722,stroke:#fff,color:#fff
+    style PS fill:#E64A19,stroke:#fff,color:#fff
+    style IE fill:#E64A19,stroke:#fff,color:#fff
+    style SYN fill:#E64A19,stroke:#fff,color:#fff
+    style Docs fill:#795548,stroke:#fff,color:#fff
+    style GH fill:#5D4037,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
@@ -542,6 +740,20 @@ flowchart TB
     E8 -.-> E6
     E9 -.-> E5
     E10 -.-> E1
+    
+    style REST fill:#2196F3,stroke:#fff,color:#fff
+    style E1 fill:#4CAF50,stroke:#fff,color:#fff
+    style E2 fill:#f5a623,stroke:#fff,color:#000
+    style E3 fill:#9C27B0,stroke:#fff,color:#fff
+    style E4 fill:#00BCD4,stroke:#fff,color:#fff
+    style E5 fill:#f44336,stroke:#fff,color:#fff
+    style E6 fill:#FF9800,stroke:#fff,color:#fff
+    style E7 fill:#E91E63,stroke:#fff,color:#fff
+    style E8 fill:#795548,stroke:#fff,color:#fff
+    style E9 fill:#FF5722,stroke:#fff,color:#fff
+    style E10 fill:#607D8B,stroke:#fff,color:#fff
+    style WS fill:#673AB7,stroke:#fff,color:#fff
+    style W1 fill:#3F51B5,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
@@ -573,6 +785,12 @@ gantt
     
     section L3 GNN+NLP
     5-10% deepest risk : 25, 50
+    
+    style Traditional fill:#f44336,stroke:#fff,color:#fff
+    style SafetyEngine fill:#4CAF50,stroke:#fff,color:#fff
+    style L1 fill:#f5a623,stroke:#fff,color:#000
+    style L2 fill:#00BCD4,stroke:#fff,color:#fff
+    style L3 fill:#9C27B0,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
