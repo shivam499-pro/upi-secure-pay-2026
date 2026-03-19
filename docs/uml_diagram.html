@@ -562,19 +562,6 @@ stateDiagram-v2
     
     LOGGED_TO_DB --> DASHBOARD_UPDATED: WebSocket push
     DASHBOARD_UPDATED --> [*]
-    
-    style RECEIVED fill:#2196F3,stroke:#fff,color:#fff
-    style BEHAVIORAL_ANALYSIS fill:#9C27B0,stroke:#fff,color:#fff
-    style SAFETY_CHECK fill:#f5a623,stroke:#fff,color:#000
-    style LEVEL1_LIGHTGBM fill:#4CAF50,stroke:#fff,color:#fff
-    style LEVEL2_LSTM fill:#00BCD4,stroke:#fff,color:#fff
-    style LEVEL3_GNN_NLP fill:#FF9800,stroke:#fff,color:#fff
-    style RISK_SCORED fill:#673AB7,stroke:#fff,color:#fff
-    style APPROVED fill:#4CAF50,stroke:#fff,color:#fff
-    style ALERTED fill:#ff9800,stroke:#fff,color:#000
-    style BLOCKED fill:#f44336,stroke:#fff,color:#fff
-    style LOGGED_TO_DB fill:#607D8B,stroke:#fff,color:#fff
-    style DASHBOARD_UPDATED fill:#3F51B5,stroke:#fff,color:#fff
                 </div>
             </div>
         </div>
@@ -629,11 +616,6 @@ erDiagram
         string reason
         datetime created_at
     }
-    
-    style TRANSACTION fill:#2196F3,stroke:#fff,color:#fff
-    style USER_PROFILE fill:#9C27B0,stroke:#fff,color:#fff
-    style FRAUD_REPORT fill:#f44336,stroke:#fff,color:#fff
-    style FRAUD_BLACKLIST fill:#ff9800,stroke:#fff,color:#000
                 </div>
             </div>
         </div>
@@ -785,12 +767,6 @@ gantt
     
     section L3 GNN+NLP
     5-10% deepest risk : 25, 50
-    
-    style Traditional fill:#f44336,stroke:#fff,color:#fff
-    style SafetyEngine fill:#4CAF50,stroke:#fff,color:#fff
-    style L1 fill:#f5a623,stroke:#fff,color:#000
-    style L2 fill:#00BCD4,stroke:#fff,color:#fff
-    style L3 fill:#9C27B0,stroke:#fff,color:#fff
             </div>
         </div>
     </div>
