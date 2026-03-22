@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -19,6 +19,7 @@ from level3_gnn_nlp import predict_level3_risk, initialize_level3, add_transacti
 import database
 import lgbm_model
 from core.redis_client import init_redis, close_redis, cache_fraud_result, get_cached_fraud_result
+from core.dependencies import get_optional_user
 from routers.auth import router as auth_router
 
 @asynccontextmanager
@@ -173,7 +174,7 @@ async def root():
 
 
 @app.post("/analyze-transaction", response_model=TransactionResult)
-async def analyze_transaction(transaction: TransactionInput):
+async def analyze_transaction(transaction: TransactionInput, current_user: dict = Depends(get_optional_user)):
     """
     Analyze a transaction for fraud risk.
     Returns risk score, level, and blocking decision.
@@ -185,8 +186,13 @@ async def analyze_transaction(transaction: TransactionInput):
         if cached_result:
             return TransactionResult(**cached_result)
         
-        # Get user ID (using a default if not provided)
-        user_id = "user@upi"  # In production, get from auth
+        # Use authenticated user if available, otherwise default
+        if current_user:
+            user_id = current_user.get("user_id", "user@upi")
+            print(f"✅ Authenticated user: {user_id}, role: {current_user.get('role')}")
+        else:
+            user_id = "user@upi"
+            print(f"⚠️ No authenticated user - using default: {user_id}")
         
         # Get user's recent transactions for LSTM sequence analysis
         user_profile = user_profile_manager.get_or_create_profile(user_id)
@@ -246,6 +252,10 @@ async def analyze_transaction(transaction: TransactionInput):
             behavioral_deviation_score=behavioral_deviation.deviation_score,
             network_risk_score=network_risk_score
         )
+        
+        # Override sender_upi with authenticated user_id
+        result.sender_upi = user_id
+        print(f"🔐 Setting sender_upi to: {user_id}")
         
         # Add LSTM anomaly reason to risk factors if high
         if lstm_sequence_score > 0.5 and lstm_anomaly_reason:
