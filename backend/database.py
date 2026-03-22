@@ -26,7 +26,9 @@ class Transaction(Base):
     amount = Column(Float, nullable=False)
     merchant_name = Column(String)
     merchant_upi_id = Column(String)
-    decision = Column(String)
+    decision = Column(String(20), nullable=True, default="PENDING")
+    fraud_score = Column(Float, nullable=True)
+    risk_level = Column(String(10), nullable=True)
     risk_score = Column(Float)
     reasons = Column(Text)
     level_reached = Column(String)
@@ -81,7 +83,9 @@ def save_transaction(session_maker, txn_data):
             amount=txn_data.get("amount"),
             merchant_name=txn_data.get("merchant_name"),
             merchant_upi_id=txn_data.get("merchant_upi_id"),
-            decision=txn_data.get("decision"),
+            decision=txn_data.get("decision", "PENDING"),
+            fraud_score=txn_data.get("fraud_score"),
+            risk_level=txn_data.get("risk_level"),
             risk_score=txn_data.get("risk_score"),
             reasons=txn_data.get("reasons"),
             level_reached=txn_data.get("level_reached"),

@@ -1,0 +1,32 @@
+{
+  "features": [
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
+    "balance_change_orig",
+    "balance_change_dest",
+    "balance_error_orig",
+    "balance_error_dest",
+    "amount_to_balance_ratio",
+    "dest_balance_change",
+    "is_round_amount",
+    "hour_of_day",
+    "is_transfer",
+    "is_cashout",
+    "is_payment",
+    "is_debit",
+    "is_large_amount",
+    "zero_old_balance_orig",
+    "zero_old_balance_dest",
+    "step"
+  ],
+  "n_features": 21,
+  "engineered_features": [
+    "amount_to_balance_ratio",
+    "dest_balance_change",
+    "is_round_amount",
+    "hour_of_day"
+  ]
+}

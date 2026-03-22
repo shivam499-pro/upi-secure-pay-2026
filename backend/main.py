@@ -1,10 +1,14 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from typing import List, Optional
 import asyncio
 import json
 import random
 from datetime import datetime
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from schemas import TransactionInput, TransactionResult, DashboardStats, RiskFactor
 from risk_engine import RiskEngine
 from fraud_report import FraudReport, fraud_report_manager
@@ -13,8 +17,69 @@ from user_profile import UserProfile, user_profile_manager
 from level2_lstm import predict_sequence_risk
 from level3_gnn_nlp import predict_level3_risk, initialize_level3, add_transaction_to_graph
 import database
+import lgbm_model
+from core.redis_client import init_redis, close_redis, cache_fraud_result, get_cached_fraud_result
+from routers.auth import router as auth_router
 
-app = FastAPI(title="UPI Secure Pay API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global db_session, db_engine, db_initialized
+    print("\n🚀 Starting UPI Secure Pay API...")
+    
+    # Init Redis
+    await init_redis()
+    
+    # Init Database (moved from @on_event)
+    db_initialized, db_engine, db_session = database.init_db()
+    
+    # Init Level 3 GNN+NLP
+    initialize_level3()
+    
+    # Generate initial sample data
+    for _ in range(10):
+        sample = generate_sample_transaction()
+        if random.random() < 0.3:
+            sample.device_rooted = True
+            sample.is_on_call = True
+        result = risk_engine.analyze_transaction(sample)
+        transactions_store.append(result)
+        if db_initialized and db_session:
+            try:
+                reasons_str = result.message if result.message else ""
+                if hasattr(result, 'risk_factors') and result.risk_factors:
+                    reasons_str = ", ".join([str(r) for r in result.risk_factors[:3]])
+                txn_data = {
+                    "transaction_id": result.transaction_id,
+                    "amount": result.amount,
+                    "merchant_name": "Sample Merchant",
+                    "merchant_upi_id": "sample@upi",
+                    "decision": "BLOCK" if result.is_blocked else ("ALERT" if result.is_alert else "APPROVE"),
+                    "fraud_score": getattr(result, 'fraud_score', None),
+                    "risk_level": getattr(result, 'risk_level_db', None),
+                    "risk_score": result.risk_score,
+                    "reasons": reasons_str,
+                    "level_reached": result.risk_level,
+                    "latency_ms": 0.0,
+                    "behavioral_deviation": None,
+                    "network_risk_score": None
+                }
+                database.save_transaction(db_session, txn_data)
+            except Exception as e:
+                print(f"Startup DB save error: {e}")
+    
+    yield
+    
+    # Shutdown
+    await close_redis()
+    print("\n👋 Shutting down UPI Secure Pay API...")
+
+app = FastAPI(title="UPI Secure Pay API", version="1.0.0", lifespan=lifespan)
+
+# Add rate limiter
+limiter = Limiter(key_func=get_remote_address, storage_uri="redis://localhost:6379")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.include_router(auth_router)
 
 # Configure CORS
 app.add_middleware(
@@ -115,6 +180,11 @@ async def analyze_transaction(transaction: TransactionInput):
     Includes Safety Engine, LightGBM, LSTM Sequence, behavioral deviation and network risk scoring.
     """
     try:
+        # Check cache first
+        cached_result = await get_cached_fraud_result(transaction.transaction_id)
+        if cached_result:
+            return TransactionResult(**cached_result)
+        
         # Get user ID (using a default if not provided)
         user_id = "user@upi"  # In production, get from auth
         
@@ -203,7 +273,21 @@ async def analyze_transaction(transaction: TransactionInput):
         result.gnn_score = gnn_score
         result.nlp_score = nlp_score
         result.level3_active = True
-        
+
+        # Populate fraud_score and risk_level_db from LightGBM
+        try:
+            raw_fraud_score = lgbm_model.predict_fraud_score(transaction)
+            result.fraud_score = round(float(raw_fraud_score), 4)
+            if raw_fraud_score >= 0.80:
+                result.risk_level_db = "HIGH"
+            elif raw_fraud_score >= 0.50:
+                result.risk_level_db = "MEDIUM"
+            else:
+                result.risk_level_db = "LOW"
+            print(f"✅ fraud_score: {result.fraud_score} | risk_level_db: {result.risk_level_db}")
+        except Exception as e:
+            print(f"❌ fraud_score error: {e}")
+
         # Update user profile with this transaction
         user_profile_manager.update_user_profile(
             user_id=user_id,
@@ -238,6 +322,10 @@ async def analyze_transaction(transaction: TransactionInput):
         if len(transactions_store) > 100:
             transactions_store.pop()
         
+        # Cache the result
+        result_dict = json.loads(result.model_dump_json())
+        await cache_fraud_result(transaction.transaction_id, result_dict)
+        
         # Save to database if available
         global db_session, db_initialized
         if db_initialized and db_session:
@@ -254,6 +342,8 @@ async def analyze_transaction(transaction: TransactionInput):
                     "merchant_name": transaction.merchant_name,
                     "merchant_upi_id": transaction.merchant_upi_id,
                     "decision": "BLOCK" if result.is_blocked else ("ALERT" if result.is_alert else "APPROVE"),
+                    "fraud_score": getattr(result, 'fraud_score', None),
+                    "risk_level": getattr(result, 'risk_level_db', None),
                     "risk_score": result.risk_score,
                     "reasons": reasons_str,
                     "level_reached": result.risk_level,
@@ -468,54 +558,6 @@ async def broadcast_transaction(transaction: TransactionResult):
     for conn in disconnected:
         if conn in active_connections:
             active_connections.remove(conn)
-
-
-# Generate initial sample data on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and generate sample data"""
-    global db_session, db_engine, db_initialized
-    
-    # Initialize database
-    db_initialized, db_engine, db_session = database.init_db()
-    
-    # Initialize Level 3 GNN+NLP
-    initialize_level3()
-    
-    # Generate initial sample data
-    for _ in range(10):
-        sample = generate_sample_transaction()
-        # Occasionally add high risk factors
-        if random.random() < 0.3:
-            sample.device_rooted = True
-            sample.is_on_call = True
-        result = risk_engine.analyze_transaction(sample)
-        transactions_store.append(result)
-        
-        # Save to database if available
-        if db_initialized and db_session:
-            try:
-                reasons_str = result.message if result.message else ""
-                if hasattr(result, 'risk_factors') and result.risk_factors:
-                    reasons_list = [str(r) for r in result.risk_factors[:3]]
-                    reasons_str = ", ".join(reasons_list)
-                
-                txn_data = {
-                    "transaction_id": result.transaction_id,
-                    "amount": result.amount,
-                    "merchant_name": sample.merchant_name,
-                    "merchant_upi_id": sample.merchant_upi_id,
-                    "decision": "BLOCK" if result.is_blocked else ("ALERT" if result.is_alert else "APPROVE"),
-                    "risk_score": result.risk_score,
-                    "reasons": reasons_str,
-                    "level_reached": result.risk_level,
-                    "latency_ms": 0.0,
-                    "behavioral_deviation": None,
-                    "network_risk_score": None
-                }
-                database.save_transaction(db_session, txn_data)
-            except Exception as e:
-                print(f"Startup DB save error: {e}")
 
 
 # ========== NEW ENDPOINTS ==========

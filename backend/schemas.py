@@ -38,7 +38,9 @@ class TransactionResult(BaseModel):
     risk_level: str  # low, medium, high, critical
     is_blocked: bool
     is_alert: bool
-    decision: Optional[str] = None  # BLOCK, ALERT, APPROVE (optional for DB compatibility)
+    decision: Optional[str] = "PENDING"  # BLOCK, ALERT, APPROVE
+    fraud_score: Optional[float] = None  # LightGBM fraud probability
+    risk_level_db: Optional[str] = None  # HIGH, MEDIUM, LOW based on threshold
     message: str
     risk_factors: List[RiskFactor]
     timestamp: str
