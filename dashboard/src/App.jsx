@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import UserDashboard from './UserDashboard';
+import Login from './Login';
+import { isLoggedIn, getUser, getToken, logout } from './auth';
 import './App.css';
 
 const API_BASE = 'http://127.0.0.1:8000';
@@ -23,6 +25,8 @@ function App() {
   const [wsConnected, setWsConnected] = useState(false);
   const [liveTransactions, setLiveTransactions] = useState([]);
   const [showResult, setShowResult] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
+  const [currentUser, setCurrentUser] = useState(getUser());
   const [analysisResult, setAnalysisResult] = useState(null);
   const [latency, setLatency] = useState(0);
   const wsRef = useRef(null);
@@ -424,6 +428,13 @@ function App() {
     );
   }
 
+  if (!loggedIn) {
+    return <Login onLoginSuccess={(data) => {
+      setLoggedIn(true);
+      setCurrentUser(getUser());
+    }} />;
+  }
+
   return (
     <div className="app">
       {/* Tab Navigation */}
@@ -444,6 +455,13 @@ function App() {
             onClick={() => setShowFraudModal(true)}
           >
             REPORT FRAUD
+          </button>
+          <button
+            className="fraud-report-btn"
+            onClick={() => { logout(); setLoggedIn(false); setCurrentUser(null); }}
+            style={{ background: '#333', color: '#888', marginLeft: '8px' }}
+          >
+            LOGOUT ({currentUser?.role})
           </button>
           <div className={`live-indicator ${wsConnected ? 'connected' : ''}`}>
             <span className="live-dot"></span>
