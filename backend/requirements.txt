@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 pydantic
 lightgbm
 scikit-learn
@@ -10,3 +10,14 @@ python-dotenv
 joblib
 sqlalchemy
 psycopg2-binary
+torch
+networkx
+redis[asyncio]
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+python-multipart
+slowapi
+imbalanced-learn
+httpx
+email-validator

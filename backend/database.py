@@ -10,7 +10,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
 # Database URL
-DATABASE_URL = "postgresql://postgres:Shivam%4012345@localhost:5432/upi-secure-pay"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:Shivam%4012345@localhost:5432/upi-secure-pay"
+)
 
 # Create engine
 engine = None
