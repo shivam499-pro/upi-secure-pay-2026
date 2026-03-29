@@ -8,12 +8,28 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, Text, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from urllib.parse import quote_plus, urlparse, urlunparse
+
+# Load environment variables
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from .env file in the same directory
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+def get_database_url():
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        # Default with encoded @
+        return "postgresql://postgres:Shivam%4012345@localhost:5432/upi-secure-pay"
+    
+    # If the user put raw @ in the URL, we might need to handle it.
+    # However, safe practice is to just use what's in the env.
+    return url
 
 # Database URL
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:Shivam%4012345@localhost:5432/upi-secure-pay"
-)
+DATABASE_URL = get_database_url()
 
 # Create engine
 engine = None

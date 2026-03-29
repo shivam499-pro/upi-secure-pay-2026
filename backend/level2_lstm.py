@@ -482,7 +482,7 @@ def train_model():
     train_lstm_model(model, train_loader, epochs=20, lr=0.001)
     
     print("\n✓ Training complete!")
-    print(f"Model saved as: lstm_model.pth")
+    print(f"Model saved as: {os.getenv('LSTM_MODEL_PATH', 'lstm_model.pth')}")
 
 
 if __name__ == "__main__":

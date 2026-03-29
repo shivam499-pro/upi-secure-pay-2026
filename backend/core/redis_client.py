@@ -50,7 +50,7 @@ async def get_redis() -> Optional[aioredis.Redis]:
     return redis_client
 
 
-async def cache_fraud_result(transaction_id: str, result: dict, ttl: int = 3600):
+async def cache_fraud_result(transaction_id: str, result: dict, ttl: int = 86400):
     """
     Cache fraud detection result.
     

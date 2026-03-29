@@ -10,10 +10,18 @@ import numpy as np
 import pandas as pd
 import joblib
 from typing import Optional
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from .env file in the same directory
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+from core.utils import resolve_path
 
 # Model paths
-MODEL_PATH = 'lgbm_fraud_model.pkl'
-FEATURES_PATH = 'lgbm_features.json'
+MODEL_PATH = resolve_path(os.getenv("LGBM_MODEL_PATH", 'lgbm_fraud_model.pkl'))
+FEATURES_PATH = resolve_path(os.getenv("LGBM_FEATURES_PATH", 'lgbm_features.json'))
 
 # Global model
 _model = None

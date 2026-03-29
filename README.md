@@ -8,9 +8,10 @@ UPI Secure Pay is an enterprise-grade fraud detection system designed specifical
 
 ### Live Demo
 
-- **Backend API**: http://127.0.0.1:8000/docs
-- **Dashboard**: http://127.0.0.1:5173
-- **WebSocket Live Feed**: ws://127.0.0.1:8000/ws/live-feed
+> Run locally first. After setup, access at:
+- **Backend API Docs**: http://localhost:8000/docs
+- **Dashboard**: http://localhost:5173
+- **WebSocket Live Feed**: ws://localhost:8000/ws/live-feed
 
 ---
 
@@ -66,8 +67,8 @@ UPI Secure Pay is an enterprise-grade fraud detection system designed specifical
 ┌─────────────────────────────────────────────────────────────┐
 │                 ML CASCADE ENGINE                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │ Safety Eng. │→ │ LightGBM    │→ │ Transformer + GNN   │ │
-│  │ (<1ms)      │  │ (<10ms)     │  │ + LLaMA (<50ms)     │ │
+│  │ Safety Eng. │→ │ LightGBM    │→ │ LSTM + GNN/NLP      │ │
+│  │ (<1ms)      │  │ (<10ms)     │  │ (NetworkX)          │ │
 │  │ Blacklist   │  │ 91.83% F1   │  │ Deep Analysis       │ │
 │  │ Scam Words  │  │ 70% exit    │  │ 5-10% escalated     │ │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘ │
@@ -155,6 +156,19 @@ Live monitoring and analytics:
 
 ---
 
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL 14+
+- Redis 7+
+
+### Environment Setup
+Copy the example env file and fill in your values:
+```bash
+cd backend
+cp .env.example .env
+```
+
 ### Installation
 
 ```bash
@@ -178,6 +192,29 @@ python -m uvicorn main:app --reload --port 8000
 # Start frontend (in new terminal)
 cd ../dashboard
 npm run dev
+```
+
+---
+
+### Demo Login
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | admin@upi.com | admin123 |
+| User | user@upi.com | user123 |
+
+---
+
+### Test the API
+`POST /analyze-transaction`
+```json
+{
+  "sender_upi": "test@okaxis",
+  "receiver_upi": "merchant@upi",
+  "amount": 50000,
+  "merchant_name": "Lucky Draw Winner",
+  "on_call": true,
+  "behavioral_score": 0.3
+}
 ```
 
 ---

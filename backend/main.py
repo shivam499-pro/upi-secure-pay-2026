@@ -21,6 +21,12 @@ import lgbm_model
 from core.redis_client import init_redis, close_redis, cache_fraud_result, get_cached_fraud_result
 from core.dependencies import get_optional_user
 from routers.auth import router as auth_router
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from .env file in the same directory
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
